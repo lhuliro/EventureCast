@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EventureCast - Events & Weather in Hamburg</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Upcoming Events in Hamburg</h1>
+ 
+    {% if events %}
+    <div class="events-grid">
+        {% for event in events %}
+        <div class="event-card">
+            <img src="{{ event.image if event.image else url_for('static', filename='placeholder.png') }}"
+                 alt="{{ event.title }}"
+                 onerror="this.onerror=null; this.src='{{ url_for('static', filename='placeholder.png')}}';">
+            <div class="event-info">
+                <h3>{{ event.title }}</h3>
+                <p>{{ event.start_date }} - {{ event.end_date }}</p>
+                <p>{{ event.location }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No events available in Hamburg for the upcoming week.</p>
+    {% endif %}
+ 
+    {% if weather %}
+    <h2>7-Day Weather Forecast for Hamburg</h2>
+    <ul class="weather-list">
+        {% for forecast in weather %}
+        <li>
+            <strong>{{ forecast.dt_txt }}</strong>: {{ forecast.main.temp }}°C, {{ forecast.weather[0].description }}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</body>
+</html>
