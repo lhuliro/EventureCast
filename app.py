@@ -108,7 +108,7 @@ def get_weather_forecast():
         data = response.json()
         return data['list']
     except Exception as e:
-        print("خطأ في جلب بيانات الطقس:", e)
+        print("Error fetching weather data:", e)
         return []
  
 @app.route('/')
