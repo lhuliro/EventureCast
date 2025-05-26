@@ -9,3 +9,4 @@ conn.request("GET", "/export.php?mail=ghaith.alshathi.24@nithh.onmicrosoft.com&p
 res = conn.getresponse()
 data = res.read()
 print(data.decode("utf-8"))
+print("just a test message")
