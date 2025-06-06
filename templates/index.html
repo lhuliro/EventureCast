@@ -32,7 +32,9 @@
     <ul class="weather-list">
         {% for forecast in weather %}
         <li>
-            <strong>{{ forecast.dt_txt }}</strong>: {{ forecast.main.temp }}°C, {{ forecast.weather[0].description }}
+            <strong>{{ forecast.readable_date }}</strong>: 
+            {{ forecast.temp.day }}°C (min: {{ forecast.temp.min }}°C, max: {{ forecast.temp.max }}°C), 
+            {{ forecast.weather[0].description }}
         </li>
         {% endfor %}
     </ul>
