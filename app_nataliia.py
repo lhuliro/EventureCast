@@ -1,76 +1,88 @@
-import http.client
+from flask import Flask, render_template
+import requests
+from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
+import json
 
-conn = http.client.HTTPSConnection("www.wasgehtapp.de")
-payload = ''
-headers = {
-  'Cookie': 'lv=1747851903; v=1; vc=2'
-}
-conn.request("GET", "/export.php?mail=ghaith.alshathi.24@nithh.onmicrosoft.com&passwort=Gatetomba90&columns=null", payload, headers)
-res = conn.getresponse()
-data = res.read()
-print(data.decode("utf-8"))
+# Load environment variables from .env
+load_dotenv()
 
-def fetch_hamburg_events():
-    """Fetch real events from wasgehtapp.de API"""
+app = Flask(__name__)
+
+# Credentials
+WASGEHTAPP_USER = os.getenv('WASGEHTAPP_USER')
+WASGEHTAPP_PASS = os.getenv('WASGEHTAPP_PASS')
+OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
+
+def get_events():
+    api_url = 'https://www.wasgehtapp.de/export.php'
+    today = datetime.today().date()
+    next_week = today + timedelta(days=7)
+    payload = {
+        'mail': WASGEHTAPP_USER,
+        'passwort': WASGEHTAPP_PASS,
+        'locations': '7',  # Hamburg ID
+        'datum_start': today.strftime('%Y-%m-%d'),
+        'datum_ende': next_week.strftime('%Y-%m-%d'),
+        'columns': 'bild_s,titel,datum_iso,zeit,location,id,kategorie'
+    }
+
     try:
-        conn = http.client.HTTPSConnection("www.wasgehtapp.de")
-        dataList = []
-        boundary = 'wL36Yn8afVp8Ag7AmP8qZ0SA4n1v9T'
-        
-        # Build the multipart form data
-        dataList.append(encode('--' + boundary))
-        dataList.append(encode('Content-Disposition: form-data; name=mail;'))
-        dataList.append(encode('Content-Type: {}'.format('text/plain')))
-        dataList.append(encode(''))
-        dataList.append(encode("ghaith.alshathi.24@nithh.onmicrosoft.com"))
-        dataList.append(encode('--' + boundary))
-        dataList.append(encode('Content-Disposition: form-data; name=passwort;'))
-        dataList.append(encode('Content-Type: {}'.format('text/plain')))
-        dataList.append(encode(''))
-        dataList.append(encode("Gatetomba90"))
-        dataList.append(encode('--'+boundary+'--'))
-        dataList.append(encode(''))
-        
-        body = b'\r\n'.join(dataList)
-        headers = {
-            'Content-type': 'multipart/form-data; boundary={}'.format(boundary)
-        }
-        
-        # Make the request
-        conn.request("POST", "/export.php", body, headers)
-        res = conn.getresponse()
-        data = res.read()
-        response_text = data.decode("utf-8")
-        
-        # Parse the JSON response
-        events_data = json.loads(response_text)
-        
-        if 'data' in events_data and isinstance(events_data['data'], list):
-            raw_events = events_data['data']
-            
-            # Convert to the format expected by your Flask app
-            formatted_events = []
-            for event in raw_events:
-                formatted_event = {
-                    "title": event.get("titel", ""),
-                    "start_date": event.get("datum_iso", ""),
-                    "end_date": event.get("datum_iso", ""),  # Same as start for single-day events
-                    "location": "Hamburg",  # All events are in Hamburg
-                    "venue": event.get("location", ""),  # Specific venue
-                    "time": event.get("zeit", ""),
-                    "category": event.get("kategorie", ""),
-                    "id": event.get("id", ""),
-                    "image": "https://example.com/default.jpg"  # Default image
-                }
-                formatted_events.append(formatted_event)
-            
-            print(f"✅ Successfully fetched {len(formatted_events)} events from API")
-            return formatted_events
-            
-        else:
-            print("❌ Unexpected API response format")
-            return get_fallback_events()
-            
+        response = requests.post(api_url, data=payload)
+        response.raise_for_status()
+        data = response.json()
+        if 'error' in data:
+            print("API Error:", data['error'])
+            return []
+
+        formatted_events = []
+        for event in data.get("data", []):
+            formatted_events.append({
+                "title": event.get("titel", ""),
+                "start_date": event.get("datum_iso", ""),
+                "end_date": event.get("datum_iso", ""),
+                "location": "Hamburg",
+                "venue": event.get("location", ""),
+                "time": event.get("zeit", ""),
+                "category": event.get("kategorie", ""),
+                "id": event.get("id", ""),
+                "image": event.get("bild_s") or "https://example.com/default.jpg"
+            })
+
+        return formatted_events
+
     except Exception as e:
-        print(f"❌ Error fetching events from API: {e}")
-        return get_fallback_events()
+        print("Error fetching event data:", e)
+        return []
+
+def get_weather_forecast():
+    lat = 53.5511
+    lon = 9.9937
+    url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=current,minutely,hourly,alerts&appid={OPENWEATHER_API_KEY}&units=metric&lang=en"
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        daily_forecasts = data.get('daily', [])[:7]
+
+        for day in daily_forecasts:
+            day['readable_date'] = datetime.utcfromtimestamp(day['dt']).strftime('%A, %B %d, %Y')
+            day['icon_url'] = f"http://openweathermap.org/img/wn/{day['weather'][0]['icon']}@2x.png"
+            day['description'] = day['weather'][0]['description'].capitalize()
+            day['wind'] = f"{day['wind_speed']} m/s"
+        return daily_forecasts
+
+    except Exception as e:
+        print("Error fetching weather data:", e)
+        return []
+
+@app.route('/')
+def index():
+    events = get_events()
+    weather = get_weather_forecast()
+    return render_template('index.html', events=events, weather=weather)
+
+if __name__ == '__main__':
+    app.run(debug=True)
