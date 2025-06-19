@@ -4,10 +4,36 @@
     <meta charset="UTF-8">
     <title>EventureCast - Events & Weather in Hamburg</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap" rel="stylesheet">
 </head>
 <body>
+    <header>
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="EventureCast Logo" height="80">
+    </header>
+
     <h1>Upcoming Events in Hamburg</h1>
- 
+
+    <form method="GET">
+        <label for="date">Date:</label>
+        <input type="date" id="date" name="date" value="{{ date_filter }}">
+
+        <label for="time_of_day">Time of Day:</label>
+        <input type="text" id="time_of_day" name="time_of_day" value="{{ time_filter }}">
+
+        <label for="category">Category:</label>
+        <select id="category" name="category">
+            <option value="">-- Select Category --</option>
+            {% for cat in categories %}
+            <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="venue">Location/Street:</label>
+        <input type="text" id="venue" name="venue" value="{{ venue_filter }}">
+
+        <button type="submit">Apply Filters</button>
+    </form>
+
     {% if events %}
     <div class="events-grid">
         {% for event in events %}
@@ -18,26 +44,15 @@
             <div class="event-info">
                 <h3>{{ event.title }}</h3>
                 <p>{{ event.start_date }} - {{ event.end_date }}</p>
-                <p>{{ event.location }}</p>
+                <p>{{ event.time if event.time else 'Time not specified' }}</p>
+                <p>{{ event.venue }}</p>
+                <p>Category: {{ event.category }}</p>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <p>No events available in Hamburg for the upcoming week.</p>
-    {% endif %}
- 
-    {% if weather %}
-    <h2>7-Day Weather Forecast for Hamburg</h2>
-    <ul class="weather-list">
-        {% for forecast in weather %}
-        <li>
-            <strong>{{ forecast.readable_date }}</strong>: 
-            {{ forecast.temp.day }}°C (min: {{ forecast.temp.min }}°C, max: {{ forecast.temp.max }}°C), 
-            {{ forecast.weather[0].description }}
-        </li>
-        {% endfor %}
-    </ul>
+    <p>No events available in Hamburg for the selected criteria.</p>
     {% endif %}
 </body>
 </html>

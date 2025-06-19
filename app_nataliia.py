@@ -65,13 +65,13 @@ def index():
     events = get_events()
     filtered_events = [
         event for event in events
-        if event.get('location', '').lower() == 'hamburg'
+        if 'hamburg' in event.get('location', '').lower() 
         and start_date <= datetime.strptime(event.get('start_date', '1900-01-01'), "%Y-%m-%d").date() <= end_date
     ]
  
     weather = get_weather_forecast()
     print(json.dumps(weather,indent=1))
-    return render_template('index.html', events=filtered_events, weather=weather)
+    return render_template('index.html', events=events_raw, weather=weather)
  
 if __name__ == '__main__':
     app.run(debug=True)
