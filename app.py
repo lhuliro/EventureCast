@@ -23,7 +23,7 @@ def get_weather_forecast():
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        forecasts = data.get('daily', [])[:7]  # فقط 7 أيام قادمة
+        forecasts = data.get('daily', [])[:7]
         for day in forecasts:
             day['readable_date'] = datetime.utcfromtimestamp(day['dt']).strftime('%Y-%m-%d')
         return forecasts

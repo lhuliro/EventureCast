@@ -52,6 +52,59 @@
         .filter-form button:hover {
             background: #5f27cd;
         }
+
+        /* Category dropdown styles */
+        .category-container {
+            position: relative;
+        }
+        .category-input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .category-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        .category-option {
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .category-option:hover {
+            background-color: #f8f9fa;
+        }
+        .category-option.highlighted {
+            background-color: #e9ecef;
+        }
+        .category-icon {
+            margin-right: 0.5rem;
+            font-size: 1.1rem;
+        }
+        .no-results {
+            padding: 0.5rem;
+            color: #6c757d;
+            font-style: italic;
+            text-align: center;
+        }
+        .error-message {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
         .container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -117,7 +170,14 @@
 
     <form method="get" class="filter-form">
         <input type="text" name="query" value="{{ query }}" placeholder="🔍 Search for event" />
-        <input type="text" name="category" value="{{ category }}" placeholder="🎯 Category" />
+        
+        <div class="category-container">
+            <input type="text" name="category" value="{{ category }}" placeholder="🎯 Category" 
+                   class="category-input" id="categoryInput" autocomplete="off" />
+            <div class="category-dropdown" id="categoryDropdown"></div>
+            <div class="error-message" id="categoryError">Category not found. Please select from available options.</div>
+        </div>
+        
         <input type="date" name="date" value="{{ date }}" />
         <input type="text" name="time" value="{{ time }}" placeholder="🕒 Time" />
         <input type="text" name="location" value="{{ location }}" placeholder="📍 Location" />
@@ -179,5 +239,190 @@
     <footer>
         <p>&copy; 2025 Hamburg Events. All rights reserved.</p>
     </footer>
+
+    <script>
+        // Define all available categories with icons (always show all categories)
+        const categories = {
+            'konzert': '🎵 Konzert',
+            'party': '🎉 Party', 
+            'literatur': '📚 Literatur',
+            'comedy': '😂 Comedy',
+            'theater': '🎭 Theater',
+            'vortrag': '🎤 Vortrag',
+            'sport': '🏃 Sport',
+            'medien': '🖥️ Medien',
+            'sonstige': '🧩 Sonstige',
+            'kunst': '🖼️ Kunst',
+            'angebote': '💡 Angebote',
+            'disco': '🪩 Disco',
+            'kino': '🎬 Kino'
+        };
+
+        // Always show all categories, sorted alphabetically
+        const availableCategories = Object.keys(categories).sort();
+
+        const categoryInput = document.getElementById('categoryInput');
+        const categoryDropdown = document.getElementById('categoryDropdown');
+        const categoryError = document.getElementById('categoryError');
+        let highlightedIndex = -1;
+        let isValidCategory = true;
+
+        function showDropdown(filteredCategories = availableCategories) {
+            categoryDropdown.innerHTML = '';
+            
+            if (filteredCategories.length === 0) {
+                const noResults = document.createElement('div');
+                noResults.className = 'no-results';
+                noResults.textContent = 'No categories found';
+                categoryDropdown.appendChild(noResults);
+            } else {
+                filteredCategories.forEach((category, index) => {
+                    const option = document.createElement('div');
+                    option.className = 'category-option';
+                    option.innerHTML = `<span class="category-icon">${categories[category].split(' ')[0]}</span>${categories[category].split(' ').slice(1).join(' ')}`;
+                    option.addEventListener('click', () => selectCategory(category));
+                    categoryDropdown.appendChild(option);
+                });
+            }
+            
+            categoryDropdown.style.display = 'block';
+        }
+
+        function hideDropdown() {
+            categoryDropdown.style.display = 'none';
+            highlightedIndex = -1;
+        }
+
+        function selectCategory(category) {
+            categoryInput.value = category;
+            hideDropdown();
+            validateCategory();
+        }
+
+        function validateCategory() {
+            const inputValue = categoryInput.value.toLowerCase().trim();
+            isValidCategory = inputValue === '' || availableCategories.includes(inputValue);
+            
+            if (isValidCategory) {
+                categoryError.style.display = 'none';
+                categoryInput.style.borderColor = '#ccc';
+            } else {
+                categoryError.style.display = 'block';
+                categoryInput.style.borderColor = '#dc3545';
+            }
+        }
+
+        function filterCategories(query) {
+            return availableCategories.filter(category => 
+                category.includes(query.toLowerCase()) || 
+                categories[category].toLowerCase().includes(query.toLowerCase())
+            );
+        }
+
+        function highlightOption(direction) {
+            const options = categoryDropdown.querySelectorAll('.category-option');
+            if (options.length === 0) return;
+
+            // Remove current highlight
+            if (highlightedIndex >= 0 && highlightedIndex < options.length) {
+                options[highlightedIndex].classList.remove('highlighted');
+            }
+
+            // Update index
+            if (direction === 'down') {
+                highlightedIndex = (highlightedIndex + 1) % options.length;
+            } else if (direction === 'up') {
+                highlightedIndex = highlightedIndex <= 0 ? options.length - 1 : highlightedIndex - 1;
+            }
+
+            // Add new highlight
+            if (highlightedIndex >= 0 && highlightedIndex < options.length) {
+                options[highlightedIndex].classList.add('highlighted');
+                options[highlightedIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        // Event listeners
+        categoryInput.addEventListener('focus', () => {
+            const query = categoryInput.value;
+            const filtered = query ? filterCategories(query) : availableCategories;
+            showDropdown(filtered);
+        });
+
+        categoryInput.addEventListener('input', (e) => {
+            const query = e.target.value;
+            const filtered = filterCategories(query);
+            showDropdown(filtered);
+            highlightedIndex = -1;
+            
+            // Auto-complete functionality
+            if (query && filtered.length > 0) {
+                const exactMatch = filtered.find(cat => cat.startsWith(query.toLowerCase()));
+                if (exactMatch && exactMatch !== query.toLowerCase()) {
+                    const cursorPos = categoryInput.selectionStart;
+                    categoryInput.value = exactMatch;
+                    categoryInput.setSelectionRange(cursorPos, exactMatch.length);
+                }
+            }
+        });
+
+        categoryInput.addEventListener('blur', (e) => {
+            // Delay hiding to allow clicks on dropdown options
+            setTimeout(() => {
+                hideDropdown();
+                validateCategory();
+            }, 150);
+        });
+
+        categoryInput.addEventListener('keydown', (e) => {
+            if (categoryDropdown.style.display === 'block') {
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        highlightOption('down');
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        highlightOption('up');
+                        break;
+                    case 'Enter':
+                        e.preventDefault();
+                        const highlightedOption = categoryDropdown.querySelector('.category-option.highlighted');
+                        if (highlightedOption) {
+                            const categoryText = highlightedOption.textContent.trim();
+                            const categoryKey = availableCategories.find(cat => 
+                                categories[cat].includes(categoryText.split(' ').slice(1).join(' '))
+                            );
+                            if (categoryKey) selectCategory(categoryKey);
+                        }
+                        break;
+                    case 'Escape':
+                        hideDropdown();
+                        break;
+                }
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!categoryInput.contains(e.target) && !categoryDropdown.contains(e.target)) {
+                hideDropdown();
+            }
+        });
+
+        // Form validation before submission
+        document.querySelector('.filter-form').addEventListener('submit', (e) => {
+            validateCategory();
+            if (!isValidCategory) {
+                e.preventDefault();
+                categoryInput.focus();
+            }
+        });
+
+        // Initial validation on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            validateCategory();
+        });
+    </script>
 </body>
 </html>
