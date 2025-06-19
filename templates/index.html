@@ -26,8 +26,6 @@
         p {
             font-size: 1.2rem;
         }
-
-        /* Filter form styles */
         .filter-form {
             padding: 2rem;
             background-color: rgba(255, 255, 255, 0.9);
@@ -54,7 +52,6 @@
         .filter-form button:hover {
             background: #5f27cd;
         }
-
         .container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -67,6 +64,9 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             overflow: hidden;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
         }
         .event-card:hover {
             transform: scale(1.03);
@@ -106,9 +106,6 @@
             padding: 1rem;
             background: #343a40;
             color: white;
-            position: relative;
-            bottom: 0;
-            width: 100%;
         }
     </style>
 </head>
@@ -118,7 +115,6 @@
         <p>With weather forecast integrated</p>
     </header>
 
-    <!-- Filter form -->
     <form method="get" class="filter-form">
         <input type="text" name="query" value="{{ query }}" placeholder="🔍 Search for event" />
         <input type="text" name="category" value="{{ category }}" placeholder="🎯 Category" />
@@ -130,10 +126,15 @@
 
     <div class="container">
         {% for event in events %}
-        <div class="event-card">
+        {% set normalized_category = event.kategorie.strip().lower() %}
+        {% if normalized_category == 'kino' %}
+            {% set redirect_category = 'medien' %}
+        {% else %}
+            {% set redirect_category = normalized_category %}
+        {% endif %}
+        <a class="event-card" href="https://www.wasgehtinhamburg.de/suche.php?kategorie={{ redirect_category }}" target="_blank">
             <img class="event-bild" src="{{ event.bild }}" alt="Event Bild"
                  onerror="this.onerror=null; this.src='{{ url_for('static', filename='placeholder.png') }}';" />
-
             <div class="event-details">
                 <div class="event-title">{{ event.titel }}</div>
                 <div class="event-info">📅 {{ event.start_date[:10] }} – 🕒 {{ event.zeit }}</div>
@@ -141,13 +142,11 @@
 
                 <div class="event-info">
                     {% set category_icons = {
-                        'Konzert': '🎵', 'Party': '🎉', 'Literatur': '📚', 'Comedy': '😂',
-                        'Bühne': '🎭', 'Vortrag': '🎤', 'Sport': '🏃', 'Medien': '🖥️',
-                        'Sonstige': '🧩', 'Ausstellung': '🖼️', 'Kino': '🎬', 'Extra': '✨',
-                        'Theater': '🎭', 'Disco': '🪩'
+                        'konzert': '🎵', 'party': '🎉', 'literatur': '📚', 'comedy': '😂',
+                        'theater': '🎭', 'vortrag': '🎤', 'sport': '🏃', 'medien': '🖥️',
+                        'sonstige': '🧩', 'kunst': '🖼️', 'angebote': '💡', 'disco': '🪩', 'kino': '🎬'
                     } %}
-                    {% set normalized_category = event.kategorie.strip().title() %}
-                    🎯 Kategorie: {{ category_icons.get(normalized_category, '📌') }} {{ normalized_category }}
+                    🎯 Kategorie: {{ category_icons.get(normalized_category, '📌') }} {{ normalized_category|title }}
                 </div>
 
                 {% if event.weather %}
@@ -155,7 +154,6 @@
                     <span class="weather-icon">
                         {% set icon_main = event.weather.weather[0].main.lower() %}
                         {% set icon_desc = event.weather.weather[0].description.lower() %}
-
                         {% if 'rain' in icon_main %}
                             🌧️
                         {% elif 'snow' in icon_main %}
@@ -170,12 +168,11 @@
                             🌡️
                         {% endif %}
                     </span>
-                    {{ event.weather.weather[0].description.capitalize() }},
-                    {{ event.weather.temp.day }}°C
+                    {{ event.weather.weather[0].description.capitalize() }}, {{ event.weather.temp.day }}°C
                 </div>
                 {% endif %}
             </div>
-        </div>
+        </a>
         {% endfor %}
     </div>
 
