@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request
 import http.client
 import json
-from urllib.parse import urlencode
 
 app = Flask(__name__)
 
@@ -45,8 +44,17 @@ def index():
     def filter_event(event):
         if date_filter and event["start_date"][:10] != date_filter:
             return False
-        if time_filter and time_filter.lower() not in event.get("time", "").lower():
-            return False
+        if time_filter:
+            try:
+                event_hour = int(event.get("time", "").split(":")[0])
+                if time_filter == "morning" and not (6 <= event_hour < 12):
+                    return False
+                elif time_filter == "afternoon" and not (12 <= event_hour < 17):
+                    return False
+                elif time_filter == "evening" and not (17 <= event_hour <= 23):
+                    return False
+            except:
+                return False
         if category_filter and category_filter.lower() not in event.get("category", "").lower():
             return False
         if venue_filter and venue_filter.lower() not in event.get("venue", "").lower():

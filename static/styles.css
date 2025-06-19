@@ -9,35 +9,49 @@ h1, h2 {
 }
 
 header {
-    text-align: center;
+    display: flex;
+    justify-content: flex-end;
     margin-bottom: 20px;
 }
 
+header img {
+    height: 120px;
+    margin-right: 20px;
+}
+
 form {
-    max-width: 700px;
+    max-width: 100%;
     margin: 0 auto 30px;
     padding: 20px;
     background: white;
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
-    justify-content: space-between;
+    justify-content: center;
+    align-items: center;
 }
 
-form label, form input, form select, form button {
-    flex: 1 1 45%;
-    min-width: 200px;
+form label {
+    margin-right: 5px;
+    white-space: nowrap;
+}
+
+form input, form select {
+    margin-right: 15px;
+    min-width: 150px;
+    padding: 5px;
 }
 
 form button {
     background-color: #4CAF50;
     color: white;
     border: none;
-    padding: 10px;
+    padding: 10px 20px;
     border-radius: 5px;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 form button:hover {

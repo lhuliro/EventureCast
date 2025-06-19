@@ -8,7 +8,7 @@
 </head>
 <body>
     <header>
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="EventureCast Logo" height="80">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="EventureCast Logo">
     </header>
 
     <h1>Upcoming Events in Hamburg</h1>
@@ -18,7 +18,12 @@
         <input type="date" id="date" name="date" value="{{ date_filter }}">
 
         <label for="time_of_day">Time of Day:</label>
-        <input type="text" id="time_of_day" name="time_of_day" value="{{ time_filter }}">
+        <select id="time_of_day" name="time_of_day">
+            <option value="">-- Select Time --</option>
+            <option value="morning" {% if time_filter == 'morning' %}selected{% endif %}>Morning (6-12)</option>
+            <option value="afternoon" {% if time_filter == 'afternoon' %}selected{% endif %}>Afternoon (12-17)</option>
+            <option value="evening" {% if time_filter == 'evening' %}selected{% endif %}>Evening (17-23)</option>
+        </select>
 
         <label for="category">Category:</label>
         <select id="category" name="category">
@@ -31,7 +36,7 @@
         <label for="venue">Location/Street:</label>
         <input type="text" id="venue" name="venue" value="{{ venue_filter }}">
 
-        <button type="submit">Apply Filters</button>
+        <button type="submit">Filter</button>
     </form>
 
     {% if events %}
