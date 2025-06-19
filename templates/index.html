@@ -4,38 +4,300 @@
     <meta charset="UTF-8">
     <title>EventureCast - Events & Weather in Hamburg</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        .category-section {
+            margin-bottom: 3rem;
+        }
+        
+        .category-title {
+            font-size: 1.8rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid #3498db;
+            text-transform: capitalize;
+        }
+        
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .event-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+        
+        .event-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .event-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        
+        .event-info {
+            padding: 1.5rem;
+        }
+        
+        .event-info h3 {
+            margin: 0 0 0.5rem 0;
+            color: #2c3e50;
+            font-size: 1.2rem;
+        }
+        
+        .event-info p {
+            margin: 0.25rem 0;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .weather-info {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+        
+        .weather-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .weather-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .weather-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        
+        .weather-temp {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        
+        .weather-desc {
+            text-transform: capitalize;
+            opacity: 0.9;
+        }
+        
+        .weather-extra {
+            text-align: right;
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+        
+        .no-weather {
+            background: #95a5a6;
+            color: white;
+            padding: 0.5rem;
+            margin-top: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.8rem;
+        }
+        
+        .event-date {
+            color: #e74c3c !important;
+            font-weight: bold;
+        }
+        
+        .event-venue {
+            color: #27ae60 !important;
+        }
+        
+        .event-time {
+            color: #8e44ad !important;
+        }
+        
+        .no-events {
+            text-align: center;
+            color: #95a5a6;
+            font-style: italic;
+            padding: 2rem;
+        }
+        
+        .weather-section {
+            margin-top: 3rem;
+            padding: 2rem;
+            background: #ecf0f1;
+            border-radius: 12px;
+        }
+        
+        .weather-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .weather-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #bdc3c7;
+        }
+        
+        .weather-list li:last-child {
+            border-bottom: none;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem;
+            background: #f8f9fa;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+        }
+        
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+    </style>
 </head>
 <body>
-    <h1>Upcoming Events in Hamburg</h1>
+    <h1>🎉 Upcoming Events in Hamburg</h1>
  
-    {% if events %}
-    <div class="events-grid">
-        {% for event in events %}
-        <div class="event-card">
-            <img src="{{ event.image if event.image else url_for('static', filename='placeholder.png') }}"
-                 alt="{{ event.title }}"
-                 onerror="this.onerror=null; this.src='{{ url_for('static', filename='placeholder.png')}}';">
-            <div class="event-info">
-                <h3>{{ event.title }}</h3>
-                <p>{{ event.start_date }} - {{ event.end_date }}</p>
-                <p>{{ event.location }}</p>
+    {% if grouped_events %}
+        {% for category, events in grouped_events.items() %}
+        <div class="category-section">
+            <h2 class="category-title">
+                {% if category == 'musik' %}
+                    🎵 Music Events
+                {% elif category == 'kultur' %}
+                    🎭 Culture Events
+                {% elif category == 'sport' %}
+                    ⚽ Sports Events
+                {% elif category == 'food' %}
+                    🍽️ Food Events
+                {% elif category == 'theater' %}
+                    🎬 Theater Events
+                {% elif category == 'nightlife' %}
+                    🌙 Nightlife Events
+                {% else %}
+                    📅 {{ category | title }} Events
+                {% endif %}
+                <span style="font-size: 0.8rem; color: #7f8c8d; font-weight: normal;">({{ events|length }} events)</span>
+            </h2>
+            
+            {% if events %}
+            <div class="events-grid">
+                {% for event in events %}
+                <div class="event-card">
+                    <img src="{{ event.image if event.image else url_for('static', filename='placeholder.png') }}"
+                         alt="{{ event.title }}"
+                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='placeholder.png')}}';">
+                    <div class="event-info">
+                        <h3>{{ event.title }}</h3>
+                        <p class="event-date">📅 {{ event.start_date }}
+                            {% if event.start_date != event.end_date %} - {{ event.end_date }}{% endif %}
+                        </p>
+                        {% if event.time %}
+                        <p class="event-time">🕐 {{ event.time }}</p>
+                        {% endif %}
+                        {% if event.venue %}
+                        <p class="event-venue">📍 {{ event.venue }}</p>
+                        {% endif %}
+                        <p>🏙️ {{ event.location }}</p>
+                        
+                        <!-- Weather Information -->
+                        {% if event.weather %}
+                        <div class="weather-info">
+                            <div class="weather-left">
+                                <div class="weather-icon">
+                                    {% if 'clear' in event.weather.description.lower() %}
+                                        ☀️
+                                    {% elif 'cloud' in event.weather.description.lower() %}
+                                        ☁️
+                                    {% elif 'rain' in event.weather.description.lower() %}
+                                        🌧️
+                                    {% elif 'snow' in event.weather.description.lower() %}
+                                        ❄️
+                                    {% elif 'storm' in event.weather.description.lower() %}
+                                        ⛈️
+                                    {% else %}
+                                        🌤️
+                                    {% endif %}
+                                </div>
+                                <div class="weather-details">
+                                    <div class="weather-temp">{{ event.weather.temp_day|round }}°C</div>
+                                    <div class="weather-desc">{{ event.weather.description }}</div>
+                                </div>
+                            </div>
+                            <div class="weather-extra">
+                                <div>💧 {{ event.weather.humidity }}%</div>
+                                <div>💨 {{ event.weather.wind_speed|round(1) }} m/s</div>
+                                {% if event.weather.pop > 0 %}
+                                <div>🌧️ {{ event.weather.pop|round }}%</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="no-weather">
+                            🌤️ Weather forecast not available
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
             </div>
+            {% else %}
+            <div class="no-events">
+                <p>No events available in this category for the upcoming period.</p>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
-    </div>
     {% else %}
-    <p>No events available in Hamburg for the upcoming week.</p>
+    <div class="no-events">
+        <p>No events available in Hamburg for the upcoming week.</p>
+    </div>
     {% endif %}
  
-    {% if weather %}
-    <h2>7-Day Weather Forecast for Hamburg</h2>
-    <ul class="weather-list">
-        {% for forecast in weather %}
-        <li>
-            <strong>{{ forecast.dt_txt }}</strong>: {{ forecast.main.temp }}°C, {{ forecast.weather[0].description }}
-        </li>
-        {% endfor %}
-    </ul>
+    {% if weather_forecasts %}
+    <div class="weather-section">
+        <h2>🌤️ 7-Day Weather Forecast for Hamburg</h2>
+        <ul class="weather-list">
+            {% for forecast in weather_forecasts %}
+            <li>
+                <strong>{{ forecast.readable_date }}</strong>: {{ forecast.temp.day|round }}°C, {{ forecast.weather[0].description }}
+                <span style="margin-left: 1rem; color: #7f8c8d;">
+                    💧 {{ forecast.humidity }}% | 💨 {{ forecast.wind_speed|round(1) }} m/s
+                    {% if forecast.pop > 0 %} | 🌧️ {{ (forecast.pop * 100)|round }}%{% endif %}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
     {% endif %}
 </body>
 </html>
