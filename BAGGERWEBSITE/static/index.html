@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donate for Cats</title>
+    <style>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            /* Animated yellow-green-purple gradient background */
+            background: linear-gradient(270deg, #fff700, #39ff14, #a259ff, #fff700);
+            background-size: 600% 600%;
+            animation: gradientBG 10s ease-in-out infinite;
+        }
+        @keyframes gradientBG {
+            0% {background-position: 0% 50%;}
+            25% {background-position: 50% 100%;}
+            50% {background-position: 100% 50%;}
+            75% {background-position: 50% 0%;}
+            100% {background-position: 0% 50%;}
+        }
+        .donate-container {
+            background: rgba(255,255,255,0.85);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+            padding: 2.5rem 2rem 2rem 2rem;
+            max-width: 350px;
+            width: 100%;
+            text-align: center;
+        }
+        .donate-container img {
+            width: 120px;
+            border-radius: 16px;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+        .donate-container h2 {
+            margin: 0 0 1rem 0;
+            color: #b8860b;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .donate-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+        .donate-form label {
+            font-size: 1.1rem;
+            color: #444;
+            margin-bottom: 0.3rem;
+        }
+        .donate-form input[type="number"] {
+            padding: 0.7rem;
+            border-radius: 8px;
+            border: 1px solid #ffe066;
+            font-size: 1.1rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+        .donate-form input[type="number"]:focus {
+            border: 1.5px solid #b8860b;
+        }
+        .donate-form button {
+            background: linear-gradient(90deg, #ffe066, #fff700);
+            color: #444;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            padding: 0.8rem;
+            font-size: 1.1rem;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.15);
+            transition: background 0.2s, transform 0.2s;
+        }
+        .donate-form button:hover {
+            background: linear-gradient(90deg, #fff700, #ffe066);
+            transform: translateY(-2px) scale(1.03);
+        }
+    </style>
+</head>
+<body>
+    <div class="donate-container">
+        <img src="https://static.posters.cz/image/1300/11026.jpg" alt="Cute Cat" style="width: 120px; border-radius: 16px; margin-bottom: 1.2rem; box-shadow: 0 4px 16px rgba(0,0,0,0.12);">
+        <h2>Donate for Cats</h2>
+        <form class="donate-form" action="/donate">
+            <label for="amount">Donation Amount ($)</label>
+            <input type="number" id="amount" name="amount" min="1" step="1" placeholder="Enter amount" required>
+            <button type="submit">Donate</button>
+        </form>
+    </div>
+</body>
+</html>
