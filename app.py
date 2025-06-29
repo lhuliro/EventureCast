@@ -213,9 +213,20 @@ def index():
     if filtered_events:
         print(f"🔍 First event coordinates: lat={filtered_events[0].get('lat')}, lon={filtered_events[0].get('lon')}")
 
+    # Build language switcher URLs preserving all filters
+    from urllib.parse import urlencode
+    args = request.args.to_dict()
+    args_de = args.copy()
+    args_en = args.copy()
+    args_de['lang'] = 'de'
+    args_en['lang'] = 'en'
+    lang_switcher_de_url = '?' + urlencode(args_de)
+    lang_switcher_en_url = '?' + urlencode(args_en)
+
     return render_template("index.html", events=filtered_events, date_filter=date_filter,
                            time_filter=time_filter, category_filter=category_filter,
-                           venue_filter=venue_filter, categories=categories, lang=lang, t=t)
+                           venue_filter=venue_filter, categories=categories, lang=lang, t=t,
+                           lang_switcher_de_url=lang_switcher_de_url, lang_switcher_en_url=lang_switcher_en_url)
 
 @app.route("/test-map")
 def test_map():

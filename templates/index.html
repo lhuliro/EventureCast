@@ -41,10 +41,10 @@
         <header style="position:relative;">
             <img src="{{ url_for('static', filename='logo.png') }}" alt="EventureCast Logo">
             <div class="lang-switcher">
-                <a href="?lang=de" class="{% if lang == 'de' %}selected{% endif %}" title="Deutsch">
+                <a href="{{ lang_switcher_de_url }}" class="{% if lang == 'de' %}selected{% endif %}" title="Deutsch">
                     <img src="https://cdn.jsdelivr.net/gh/hjnilsson/country-flags/svg/de.svg" alt="Deutsch" />
                 </a>
-                <a href="?lang=en" class="{% if lang == 'en' %}selected{% endif %}" title="English">
+                <a href="{{ lang_switcher_en_url }}" class="{% if lang == 'en' %}selected{% endif %}" title="English">
                     <img src="https://cdn.jsdelivr.net/gh/hjnilsson/country-flags/svg/gb.svg" alt="English" />
                 </a>
             </div>
