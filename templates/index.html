@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EventureCast - Events & Weather in Hamburg</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='leaflet.css') }}">
+</head>
+<body>
+    <div class="top-container">
+        <header>
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="EventureCast Logo">
+        </header>
+
+        <form method="GET">
+            <label for="date">Date:</label>
+            <input type="date" id="date" name="date" value="{{ date_filter }}">
+
+            <label for="time_of_day">Time of Day:</label>
+            <select id="time_of_day" name="time_of_day">
+                <option value="">-- Select Time --</option>
+                <option value="morning" {% if time_filter == 'morning' %}selected{% endif %}>Morning (6-12)</option>
+                <option value="afternoon" {% if time_filter == 'afternoon' %}selected{% endif %}>Afternoon (12-17)</option>
+                <option value="evening" {% if time_filter == 'evening' %}selected{% endif %}>Evening (17-23)</option>
+            </select>
+
+            <label for="category">Category:</label>
+            <select id="category" name="category">
+                <option value="">-- Select Category --</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="venue">Location/Street:</label>
+            <input type="text" id="venue" name="venue" value="{{ venue_filter }}">
+
+            <button type="submit" title="Apply selected filters">Filter</button>
+
+            {% if events %}
+            <span class="event-counter">{{ events | length }} event{{ '' if events|length == 1 else 's' }} found</span>
+            {% endif %}
+        </form>
+    </div>
+
+    <main>
+        <h1>Upcoming Events in Hamburg</h1>
+        
+        <!-- Map Container -->
+        <div id="event-map"></div>
+
+        {% if events %}
+        <div class="events-grid">
+            {% for event in events %}
+            <div class="event-card" title="{{ event.title }}">
+                <img src="{{ event.image if event.image else url_for('static', filename='placeholder.png') }}"
+                     alt="{{ event.title }}"
+                     onerror="this.onerror=null; this.src='{{ url_for('static', filename='placeholder.png')}}';">
+                <div class="event-info">
+                    <h3 title="{{ event.title }}">{{ event.title }}</h3>
+                    <p>{{ event.start_date }} - {{ event.end_date }}</p>
+                    <p>{{ event.time if event.time else 'Time not specified' }}</p>
+                    <p>
+                        {{ event.venue }}
+                        {% if event.venue %}
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ event.venue | urlencode }}+Hamburg" target="_blank" style="margin-left:5px; font-size:1.1em; text-decoration:none;" title="Open in Google Maps">📍</a>
+                        {% endif %}
+                    </p>
+                    <p>Category: {{ event.category }}</p>
+                    {% if event.weather_icon or event.weather_temp is not none %}
+                    <p>Weather: {{ event.weather_icon }} {{ event.weather_temp }}°C</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p>No events available in Hamburg for the selected criteria.</p>
+        {% endif %}
+    </main>
+
+
+    <!-- Leaflet JS -->
+    <script src="{{ url_for('static', filename='leaflet.js') }}"></script>
+
+    <!-- Map Script -->
+    <script>
+        // Simple immediate initialization
+        setTimeout(function() {
+            try {
+                console.log('🗺️ Starting map initialization...');
+                
+                // Get events data from Flask template
+                const events = {{ events|tojson }};
+                console.log('📊 Events loaded:', events.length);
+                
+                // Check if Leaflet is loaded
+                if (typeof L === 'undefined') {
+                    console.error('❌ Leaflet library not loaded');
+                    document.getElementById('event-map').innerHTML = '<div style="text-align: center; padding: 40px; color: red; font-size: 18px;">❌ Map library failed to load</div>';
+                    return;
+                }
+                
+                // Check if the map container exists
+                const mapContainer = document.getElementById('event-map');
+                if (!mapContainer) {
+                    console.error('❌ Map container not found');
+                    return;
+                }
+                
+                console.log('🗺️ Creating Leaflet map...');
+                
+                // Center map on first event if available, else default to Hamburg
+                let mapCenter = [53.5511, 9.9937];
+                if (events.length > 0 && events[0].lat && events[0].lon) {
+                    mapCenter = [events[0].lat, events[0].lon];
+                }
+                const map = L.map('event-map', {
+                    center: mapCenter,
+                    zoom: 12,
+                    scrollWheelZoom: true
+                });
+                
+                console.log('🌍 Adding tile layer...');
+                
+                // Add OpenStreetMap tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 19
+                }).addTo(map);
+
+                console.log('📍 Adding event markers...');
+                
+                // Add markers for events
+                let markerCount = 0;
+                events.forEach(function(event, index) {
+                    if (event.lat && event.lon) {
+                        try {
+                            const marker = L.marker([event.lat, event.lon]).addTo(map);
+                            let popupHtml = `
+                                <strong>${event.title}</strong><br>
+                                <em>${event.venue}</em><br>
+                                📅 ${event.start_date}<br>
+                                🕐 ${event.time || 'Time not specified'}<br>
+                            `;
+                            if (event.venue) {
+                                popupHtml += `<a href='https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue + ' Hamburg')}' target='_blank' style='color:#007bff;text-decoration:underline;'>Open in Google Maps</a>`;
+                            }
+                            marker.bindPopup(popupHtml);
+                            markerCount++;
+                        } catch (markerError) {
+                            console.error('Error adding marker for event', index, markerError);
+                        }
+                    }
+                });
+                
+                console.log(`✅ Map initialized successfully with ${markerCount} markers`);
+                
+                // Hide the loading message
+                mapContainer.classList.add('map-loaded');
+                
+                // Force map to resize after initialization
+                setTimeout(function() {
+                    map.invalidateSize();
+                    console.log('🔄 Map size invalidated');
+                }, 1000);
+                
+            } catch (error) {
+                console.error('❌ Error initializing map:', error);
+                document.getElementById('event-map').innerHTML = '<div style="text-align: center; padding: 40px; color: red; font-size: 16px;">❌ Map Error: ' + error.message + '</div>';
+            }
+        }, 2000); // Wait 2 seconds to ensure everything is loaded
+
+        // Add clear filters button logic
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.id = 'clear-filters';
+        clearBtn.textContent = 'Clear All Filters';
+        clearBtn.style.marginLeft = '10px';
+        clearBtn.style.background = '#e74c3c';
+        clearBtn.style.color = 'white';
+        clearBtn.style.border = 'none';
+        clearBtn.style.padding = '10px 20px';
+        clearBtn.style.borderRadius = '5px';
+        clearBtn.style.cursor = 'pointer';
+        document.querySelector('form').appendChild(clearBtn);
+        clearBtn.onclick = function() {
+            document.getElementById('date').value = '';
+            document.getElementById('time_of_day').selectedIndex = 0;
+            document.getElementById('category').selectedIndex = 0;
+            document.getElementById('venue').value = '';
+            document.querySelector('form').submit();
+        };
+    </script>
+</body>
+</html>

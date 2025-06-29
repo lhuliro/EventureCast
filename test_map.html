@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #test-map {
+            height: 400px;
+            width: 100%;
+            border: 2px solid red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Map</h1>
+    <div id="test-map"></div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Example event addresses (replace with your real event data)
+        const events = [
+            { title: "Elbphilharmonie", address: "Platz der Deutschen Einheit 1, Hamburg, Germany" },
+            { title: "Miniatur Wunderland", address: "Kehrwieder 2-4/Block D, Hamburg, Germany" },
+            { title: "St. Michael's Church", address: "Englische Planke 1, Hamburg, Germany" },
+            { title: "Reeperbahn", address: "Reeperbahn, Hamburg, Germany" }
+        ];
+
+        // Helper: Geocode address using OpenStreetMap Nominatim
+        async function geocodeAddress(address) {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+            const response = await fetch(url, { headers: { 'User-Agent': 'EventureCast/1.0' } });
+            const data = await response.json();
+            if (data && data.length > 0) {
+                return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+            }
+            return null;
+        }
+
+        async function showMapWithEvents() {
+            const map = L.map('test-map').setView([53.5511, 9.9937], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Add event pins with real geodata
+            for (const event of events) {
+                const geo = await geocodeAddress(event.address);
+                if (geo) {
+                    L.marker([geo.lat, geo.lon])
+                        .addTo(map)
+                        .bindPopup(`<b>${event.title}</b><br>${event.address}`);
+                } else {
+                    console.log('Could not geocode:', event.address);
+                }
+            }
+
+            // Add user geolocation
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const userLat = position.coords.latitude;
+                        const userLon = position.coords.longitude;
+                        L.marker([userLat, userLon], {
+                            icon: L.icon({
+                                iconUrl: 'https://cdn-icons-png.flaticon.com/512/64/64113.png',
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 32]
+                            })
+                        })
+                        .addTo(map)
+                        .bindPopup('You are here!')
+                        .openPopup();
+                        map.setView([userLat, userLon], 13);
+                    },
+                    function(error) {
+                        console.log('Geolocation error:', error);
+                    }
+                );
+            }
+        }
+
+        showMapWithEvents();
+    </script>
+</body>
+</html>

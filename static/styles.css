@@ -1,0 +1,179 @@
+/* Butter yellow background and base styles */
+body {
+    font-family: 'Quicksand', sans-serif;
+    margin: 0;
+    background-color: #FAEAB1;
+}
+
+/* Sticky top container: logo + filters */
+.top-container {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    backdrop-filter: blur(6px);
+    background-color: rgba(250, 234, 177, 0.9);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Logo header */
+header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 10px 20px;
+}
+
+header img {
+    height: 140px;
+    max-width: 100%;
+}
+
+/* Filter bar */
+form {
+    background-color: transparent;
+    padding: 15px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    justify-content: center;
+    align-items: center;
+}
+
+form label {
+    margin-right: 5px;
+    white-space: nowrap;
+    font-weight: bold;
+}
+
+form input,
+form select {
+    margin-right: 15px;
+    min-width: 150px;
+    padding: 6px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+form button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-weight: bold;
+}
+
+form button:hover {
+    background-color: #45a049;
+}
+
+/* Dynamic event count */
+.event-counter {
+    margin-left: 12px;
+    font-size: 0.95em;
+    color: #333;
+    font-weight: normal;
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    align-self: center;
+}
+
+main {
+    padding: 20px;
+}
+
+/* Headline */
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 30px;
+}
+
+/* Map container styling */
+#event-map {
+    width: 100%;
+    height: 400px;
+    margin: 20px auto;
+    border-radius: 10px;
+    border: 2px solid #ddd;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    background-color: #f9f9f9;
+    overflow: hidden;
+    position: relative;
+    min-height: 400px;
+}
+
+/* Add a loading message/background for debugging */
+#event-map::before {
+    content: "Loading Map...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #666;
+    font-size: 18px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Hide loading message when map is loaded */
+#event-map.map-loaded::before {
+    display: none;
+}
+
+/* Ensure Leaflet controls are properly styled */
+.leaflet-container {
+    font-family: 'Quicksand', sans-serif !important;
+}
+
+.leaflet-popup-content {
+    font-family: 'Quicksand', sans-serif !important;
+    font-size: 14px;
+}
+
+/* Event cards layout */
+.events-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    padding-bottom: 50px;
+}
+
+/* Individual event card */
+.event-card {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    width: 280px;
+    transition: transform 0.2s ease;
+}
+
+.event-card:hover {
+    transform: scale(1.02);
+}
+
+.event-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+}
+
+.event-info {
+    padding: 15px;
+}
+
+.event-info h3 {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: #222;
+}
+
+.event-info p {
+    margin: 5px 0;
+    color: #555;
+}
