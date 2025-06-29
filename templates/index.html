@@ -77,7 +77,7 @@
             <button type="submit" title="{{ t['filter'] }}">{{ t['filter'] }}</button>
 
             {% if events %}
-            <span class="event-counter">{{ events | length }} {{ t['events_found'] }}</span>
+            <span class="event-counter">{{ total_events }} {{ t['events_found'] }}</span>
             {% endif %}
         </form>
     </div>
@@ -93,6 +93,7 @@
             <div class="event-card" title="{{ event.title }}">
                 <img src="{{ event.image if event.image else url_for('static', filename='placeholder.png') }}"
                      alt="{{ event.title }}"
+                     loading="lazy"
                      onerror="this.onerror=null; this.src='{{ url_for('static', filename='placeholder.png')}}';">
                 <div class="event-info">
                     <h3 title="{{ event.title }}">{{ event.title }}</h3>
@@ -112,100 +113,54 @@
             </div>
             {% endfor %}
         </div>
+        <!-- Pagination -->
+        <div class="pagination" style="text-align:center; margin: 30px 0;">
+            {% if total_pages > 1 %}
+                {% for p in range(1, total_pages+1) %}
+                    {% if p == page %}
+                        <span style="font-weight:bold; color:#3498db; padding:6px 12px;">{{ p }}</span>
+                    {% else %}
+                        <a href="{{ page_url(p) }}" style="padding:6px 12px; text-decoration:none; color:#333;">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        </div>
         {% else %}
         <p>{{ t['no_events'] }}</p>
         {% endif %}
     </main>
 
-    <!-- Leaflet JS -->
-    <script src="{{ url_for('static', filename='leaflet.js') }}"></script>
-
-    <!-- Map Script -->
-    <script>
-        setTimeout(function() {
-            try {
-                console.log('🗺️ Starting map initialization...');
-                const events = {{ events|tojson }};
-                const lang = '{{ lang }}';
-                
-                // Check if Leaflet is loaded
-                if (typeof L === 'undefined') {
-                    console.error('❌ Leaflet library not loaded');
-                    document.getElementById('event-map').innerHTML = '<div style="text-align: center; padding: 40px; color: red; font-size: 18px;">❌ Map library failed to load</div>';
-                    return;
-                }
-                
-                // Check if the map container exists
-                const mapContainer = document.getElementById('event-map');
-                if (!mapContainer) {
-                    console.error('❌ Map container not found');
-                    return;
-                }
-                
-                console.log('🗺️ Creating Leaflet map...');
-                
-                // Center map on first event if available, else default to Hamburg
-                let mapCenter = [53.5511, 9.9937];
-                if (events.length > 0 && events[0].lat && events[0].lon) {
-                    mapCenter = [events[0].lat, events[0].lon];
-                }
-                const map = L.map('event-map', {
-                    center: mapCenter,
-                    zoom: 12,
-                    scrollWheelZoom: true
-                });
-                
-                console.log('🌍 Adding tile layer...');
-                
-                // Add OpenStreetMap tile layer
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    maxZoom: 19
-                }).addTo(map);
-
-                console.log('📍 Adding event markers...');
-                
-                // Add markers for events
-                let markerCount = 0;
-                events.forEach(function(event, index) {
-                    if (event.lat && event.lon) {
-                        try {
-                            const marker = L.marker([event.lat, event.lon]).addTo(map);
-                            let popupHtml = `
-                                <strong>${event.title}</strong><br>
-                                <em>${event.venue}</em><br>
-                                📅 ${event.start_date}<br>
-                                🕐 ${event.time || 'Time not specified'}<br>
-                            `;
-                            if (event.venue) {
-                                popupHtml += `<a href='https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue + ' Hamburg')}' target='_blank' style='color:#007bff;text-decoration:underline;'>Open in Google Maps</a>`;
-                            }
-                            marker.bindPopup(popupHtml);
-                            markerCount++;
-                        } catch (markerError) {
-                            console.error('Error adding marker for event', index, markerError);
-                        }
-                    }
-                });
-                
-                console.log(`✅ Map initialized successfully with ${markerCount} markers`);
-                
-                // Hide the loading message
-                mapContainer.classList.add('map-loaded');
-                
-                // Force map to resize after initialization
-                setTimeout(function() {
-                    map.invalidateSize();
-                    console.log('🔄 Map size invalidated');
-                }, 1000);
-                
-            } catch (error) {
-                console.error('❌ Error initializing map:', error);
-                document.getElementById('event-map').innerHTML = '<div style="text-align: center; padding: 40px; color: red; font-size: 16px;">❌ Map Error: ' + error.message + '</div>';
+    {% if events %}
+    <!-- Leaflet JS (deferred) -->
+    <script src="{{ url_for('static', filename='leaflet.js') }}" defer></script>
+    <script defer>
+    window.addEventListener('DOMContentLoaded', function() {
+        if (!window.L) return;
+        const events = {{ events|tojson }};
+        if (!events.length) return;
+        const mapContainer = document.getElementById('event-map');
+        let mapCenter = [53.5511, 9.9937];
+        if (events[0].lat && events[0].lon) mapCenter = [events[0].lat, events[0].lon];
+        const map = L.map('event-map', { center: mapCenter, zoom: 12, scrollWheelZoom: true });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        }).addTo(map);
+        events.forEach(function(event) {
+            if (event.lat && event.lon) {
+                const marker = L.marker([event.lat, event.lon]).addTo(map);
+                let popupHtml = `<strong>${event.title}</strong><br><em>${event.venue}</em><br>📅 ${event.start_date}<br>🕐 ${event.time || 'Time not specified'}<br>`;
+                if (event.venue) popupHtml += `<a href='https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venue + ' Hamburg')}' target='_blank' style='color:#007bff;text-decoration:underline;'>Open in Google Maps</a>`;
+                marker.bindPopup(popupHtml);
             }
-        }, 2000); // Wait 2 seconds to ensure everything is loaded
-
-        // Add clear filters button logic
+        });
+        setTimeout(function() { map.invalidateSize(); }, 500);
+    });
+    </script>
+    {% endif %}
+    <script>
+    // Add clear filters button logic
+    window.addEventListener('DOMContentLoaded', function() {
         const clearBtn = document.createElement('button');
         clearBtn.type = 'button';
         clearBtn.id = 'clear-filters';
@@ -225,6 +180,7 @@
             document.getElementById('venue').value = '';
             document.querySelector('form').submit();
         };
+    });
     </script>
 </body>
 </html>

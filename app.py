@@ -4,8 +4,11 @@ import json
 import requests
 import os
 import random
+import threading
 from datetime import datetime
 from functools import lru_cache
+import time
+import json as pyjson
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,16 +20,27 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 @lru_cache(maxsize=1)
 def get_weather_forecast():
+    # Cache for 10 minutes
+    cache_file = "weather_cache.json"
+    now = int(time.time())
+    try:
+        # Try to load from cache
+        if os.path.exists(cache_file):
+            with open(cache_file, "r", encoding="utf-8") as f:
+                cache = pyjson.load(f)
+                if now - cache.get("timestamp", 0) < 600:
+                    return cache["data"]
+    except Exception as e:
+        print("Weather cache read error:", e)
+
     lat = 53.5511
     lon = 9.9937
     url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=current,minutely,hourly,alerts&appid={OPENWEATHER_API_KEY}&units=metric&lang=en"
-
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
         daily_forecasts = data.get('daily', [])[:7]
-
         result = []
         for day in daily_forecasts:
             readable_date = datetime.utcfromtimestamp(day['dt']).strftime('%Y-%m-%d')
@@ -35,6 +49,12 @@ def get_weather_forecast():
                 'temp': round(day['temp']['day']),
                 'condition': day['weather'][0]['main']
             })
+        # Save to cache
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                pyjson.dump({"timestamp": now, "data": result}, f)
+        except Exception as e:
+            print("Weather cache write error:", e)
         return result
     except Exception as e:
         print("Error fetching weather data:", e)
@@ -49,11 +69,26 @@ def condition_to_emoji(condition):
     return emoji_map.get(condition, "🌈")
 
 
-# Geocode address using OpenStreetMap Nominatim
+# Geocode address using OpenStreetMap Nominatim with file cache
+geocode_cache_file = "geocode_cache.json"
+geocode_cache_lock = threading.Lock()
 def geocode_address(address):
     """
-    Geocode an address to (lat, lon) using OSM Nominatim
+    Geocode an address to (lat, lon) using OSM Nominatim, with file cache
     """
+    address_key = address.strip().lower()
+    # Try cache first
+    with geocode_cache_lock:
+        cache = {}
+        if os.path.exists(geocode_cache_file):
+            try:
+                with open(geocode_cache_file, "r", encoding="utf-8") as f:
+                    cache = pyjson.load(f)
+            except Exception as e:
+                print("Geocode cache read error:", e)
+        if address_key in cache:
+            return cache[address_key][0], cache[address_key][1]
+    # Not in cache, geocode
     try:
         url = "https://nominatim.openstreetmap.org/search"
         params = {
@@ -65,13 +100,34 @@ def geocode_address(address):
         resp = requests.get(url, params=params, headers=headers, timeout=5)
         if resp.ok and resp.json():
             data = resp.json()[0]
-            return float(data["lat"]), float(data["lon"])
+            lat, lon = float(data["lat"]), float(data["lon"])
+            # Save to cache
+            with geocode_cache_lock:
+                cache[address_key] = [lat, lon]
+                try:
+                    with open(geocode_cache_file, "w", encoding="utf-8") as f:
+                        pyjson.dump(cache, f)
+                except Exception as e:
+                    print("Geocode cache write error:", e)
+            return lat, lon
     except Exception as e:
         print(f"Geocoding failed for '{address}':", e)
-    # fallback: return None
     return None, None
 
+@lru_cache(maxsize=1)
 def fetch_hamburg_events():
+    # Cache for 10 minutes
+    cache_file = "events_cache.json"
+    now = int(time.time())
+    try:
+        if os.path.exists(cache_file):
+            with open(cache_file, "r", encoding="utf-8") as f:
+                cache = pyjson.load(f)
+                if now - cache.get("timestamp", 0) < 600:
+                    return cache["data"]
+    except Exception as e:
+        print("Events cache read error:", e)
+
     try:
         conn = http.client.HTTPSConnection("www.wasgehtapp.de")
         conn.request("GET", "/export.php?mail=ghaith.alshathi.24@nithh.onmicrosoft.com&passwort=Gatetomba90&columns=null", "", {
@@ -85,14 +141,10 @@ def fetch_hamburg_events():
 
         formatted_events = []
 
-        for idx, event in enumerate(events_data.get("data", [])):
+        for event in events_data.get("data", []):
             venue = event.get("location", "")
             address = f"{venue}, Hamburg, Germany" if venue else "Hamburg, Germany"
-            # Only geocode the first 5 events to avoid slowdowns/rate limits
-            if idx < 5:
-                lat, lon = geocode_address(address)
-            else:
-                lat, lon = None, None
+            lat, lon = geocode_address(address)
             if lat is None or lon is None:
                 # fallback to dummy coordinates if geocoding fails or skipped
                 lat = round(random.uniform(53.45, 53.65), 6)
@@ -125,6 +177,13 @@ def fetch_hamburg_events():
 
         if formatted_events:
             print("🔍 Sample weather info:", formatted_events[0].get("weather_temp"), formatted_events[0].get("weather_icon"))
+
+        # Save to cache
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                pyjson.dump({"timestamp": now, "data": formatted_events}, f)
+        except Exception as e:
+            print("Events cache write error:", e)
 
         return formatted_events
     except Exception as e:
@@ -208,10 +267,14 @@ def index():
     filtered_events = [e for e in events if filter_event(e)]
     categories = sorted(set(e['category'] for e in events if e['category']))
 
-    # Debug: Print first few events to console
-    print(f"📊 Total events: {len(events)}, Filtered: {len(filtered_events)}")
-    if filtered_events:
-        print(f"🔍 First event coordinates: lat={filtered_events[0].get('lat')}, lon={filtered_events[0].get('lon')}")
+    # Pagination
+    page = int(request.args.get('page', 1))
+    per_page = 10
+    total_filtered_events = len(filtered_events)  # total after filter, before pagination
+    total_pages = max(1, (total_filtered_events + per_page - 1) // per_page)
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated_events = filtered_events[start:end]
 
     # Build language switcher URLs preserving all filters
     from urllib.parse import urlencode
@@ -223,10 +286,22 @@ def index():
     lang_switcher_de_url = '?' + urlencode(args_de)
     lang_switcher_en_url = '?' + urlencode(args_en)
 
-    return render_template("index.html", events=filtered_events, date_filter=date_filter,
+    # Pagination URLs
+    def page_url(p):
+        args_page = args.copy()
+        args_page['page'] = p
+        return '?' + urlencode(args_page)
+
+    # Debug: Print first few events to console
+    print(f"📊 Total events: {len(events)}, Filtered: {len(filtered_events)}")
+    if paginated_events:
+        print(f"🔍 First event coordinates: lat={paginated_events[0].get('lat')}, lon={paginated_events[0].get('lon')}")
+
+    return render_template("index.html", events=paginated_events, date_filter=date_filter,
                            time_filter=time_filter, category_filter=category_filter,
                            venue_filter=venue_filter, categories=categories, lang=lang, t=t,
-                           lang_switcher_de_url=lang_switcher_de_url, lang_switcher_en_url=lang_switcher_en_url)
+                           lang_switcher_de_url=lang_switcher_de_url, lang_switcher_en_url=lang_switcher_en_url,
+                           page=page, total_pages=total_pages, page_url=page_url, total_events=total_filtered_events)
 
 @app.route("/test-map")
 def test_map():
@@ -275,4 +350,11 @@ def test_map():
     """
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import logging
+    logging.basicConfig(filename="flask_error.log", level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+    try:
+        app.run(debug=True)
+    except Exception as e:
+        import traceback
+        logging.error("Exception in Flask app:\n" + traceback.format_exc())
+        print("Exception in Flask app. See flask_error.log for details.")
