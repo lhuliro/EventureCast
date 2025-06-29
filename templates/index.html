@@ -1,55 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
     <meta charset="UTF-8">
     <title>EventureCast - Events & Weather in Hamburg</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='leaflet.css') }}">
+    <style>
+        .lang-switcher {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            position: absolute;
+            right: 30px;
+            top: 30px;
+        }
+        .lang-switcher a {
+            display: inline-block;
+            border: 2px solid #eee;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            overflow: hidden;
+            transition: border 0.2s;
+        }
+        .lang-switcher a.selected, .lang-switcher a:hover {
+            border: 2px solid #3498db;
+        }
+        .lang-switcher img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
 </head>
 <body>
     <div class="top-container">
-        <header>
+        <header style="position:relative;">
             <img src="{{ url_for('static', filename='logo.png') }}" alt="EventureCast Logo">
+            <div class="lang-switcher">
+                <a href="?lang=de" class="{% if lang == 'de' %}selected{% endif %}" title="Deutsch">
+                    <img src="https://cdn.jsdelivr.net/gh/hjnilsson/country-flags/svg/de.svg" alt="Deutsch" />
+                </a>
+                <a href="?lang=en" class="{% if lang == 'en' %}selected{% endif %}" title="English">
+                    <img src="https://cdn.jsdelivr.net/gh/hjnilsson/country-flags/svg/gb.svg" alt="English" />
+                </a>
+            </div>
         </header>
 
+
         <form method="GET">
-            <label for="date">Date:</label>
+            <label for="date">{{ t['date'] }}:</label>
             <input type="date" id="date" name="date" value="{{ date_filter }}">
 
-            <label for="time_of_day">Time of Day:</label>
+            <label for="time_of_day">{{ t['time_of_day'] }}:</label>
             <select id="time_of_day" name="time_of_day">
-                <option value="">-- Select Time --</option>
-                <option value="morning" {% if time_filter == 'morning' %}selected{% endif %}>Morning (6-12)</option>
-                <option value="afternoon" {% if time_filter == 'afternoon' %}selected{% endif %}>Afternoon (12-17)</option>
-                <option value="evening" {% if time_filter == 'evening' %}selected{% endif %}>Evening (17-23)</option>
+                <option value="">-- {{ t['time_of_day'] }} --</option>
+                <option value="morning" {% if time_filter == 'morning' %}selected{% endif %}>{{ t['time_morning'] }}</option>
+                <option value="afternoon" {% if time_filter == 'afternoon' %}selected{% endif %}>{{ t['time_afternoon'] }}</option>
+                <option value="evening" {% if time_filter == 'evening' %}selected{% endif %}>{{ t['time_evening'] }}</option>
             </select>
 
-            <label for="category">Category:</label>
+            <label for="category">{{ t['category'] }}:</label>
             <select id="category" name="category">
-                <option value="">-- Select Category --</option>
+                <option value="">{{ t['category_select'] }}</option>
                 {% for cat in categories %}
                 <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>{{ cat }}</option>
                 {% endfor %}
             </select>
 
-            <label for="venue">Location/Street:</label>
+            <label for="venue">{{ t['venue'] }}:</label>
             <input type="text" id="venue" name="venue" value="{{ venue_filter }}">
 
-            <button type="submit" title="Apply selected filters">Filter</button>
+            <button type="submit" title="{{ t['filter'] }}">{{ t['filter'] }}</button>
 
             {% if events %}
-            <span class="event-counter">{{ events | length }} event{{ '' if events|length == 1 else 's' }} found</span>
+            <span class="event-counter">{{ events | length }} {{ t['events_found'] }}</span>
             {% endif %}
         </form>
     </div>
 
     <main>
-        <h1>Upcoming Events in Hamburg</h1>
-        
+        <h1>{{ t['upcoming_events'] }}</h1>
         <!-- Map Container -->
         <div id="event-map"></div>
 
@@ -63,40 +97,36 @@
                 <div class="event-info">
                     <h3 title="{{ event.title }}">{{ event.title }}</h3>
                     <p>{{ event.start_date }} - {{ event.end_date }}</p>
-                    <p>{{ event.time if event.time else 'Time not specified' }}</p>
+                    <p>{{ event.time if event.time else t['time_not_specified'] }}</p>
                     <p>
                         {{ event.venue }}
                         {% if event.venue %}
-                        <a href="https://www.google.com/maps/search/?api=1&query={{ event.venue | urlencode }}+Hamburg" target="_blank" style="margin-left:5px; font-size:1.1em; text-decoration:none;" title="Open in Google Maps">📍</a>
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ event.venue | urlencode }}+Hamburg" target="_blank" style="margin-left:5px; font-size:1.1em; text-decoration:none;" title="{{ t['open_gmaps'] }}">📍</a>
                         {% endif %}
                     </p>
-                    <p>Category: {{ event.category }}</p>
+                    <p>{{ t['category'] }}: {{ event.category }}</p>
                     {% if event.weather_icon or event.weather_temp is not none %}
-                    <p>Weather: {{ event.weather_icon }} {{ event.weather_temp }}°C</p>
+                    <p>{{ t['weather'] }}: {{ event.weather_icon }} {{ event.weather_temp }}°C</p>
                     {% endif %}
                 </div>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <p>No events available in Hamburg for the selected criteria.</p>
+        <p>{{ t['no_events'] }}</p>
         {% endif %}
     </main>
-
 
     <!-- Leaflet JS -->
     <script src="{{ url_for('static', filename='leaflet.js') }}"></script>
 
     <!-- Map Script -->
     <script>
-        // Simple immediate initialization
         setTimeout(function() {
             try {
                 console.log('🗺️ Starting map initialization...');
-                
-                // Get events data from Flask template
                 const events = {{ events|tojson }};
-                console.log('📊 Events loaded:', events.length);
+                const lang = '{{ lang }}';
                 
                 // Check if Leaflet is loaded
                 if (typeof L === 'undefined') {
@@ -179,7 +209,7 @@
         const clearBtn = document.createElement('button');
         clearBtn.type = 'button';
         clearBtn.id = 'clear-filters';
-        clearBtn.textContent = 'Clear All Filters';
+        clearBtn.textContent = '{{ t['clear_filters'] }}';
         clearBtn.style.marginLeft = '10px';
         clearBtn.style.background = '#e74c3c';
         clearBtn.style.color = 'white';

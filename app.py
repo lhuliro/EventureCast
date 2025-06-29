@@ -139,6 +139,51 @@ def index():
     time_filter = request.args.get("time_of_day", "").strip()
     category_filter = request.args.get("category", "").strip()
     venue_filter = request.args.get("venue", "").strip()
+    lang = request.args.get("lang", "de")
+
+    translations = {
+        'de': {
+            'date': 'Datum',
+            'time_of_day': 'Tageszeit',
+            'category': 'Kategorie',
+            'venue': 'Ort/Straße',
+            'filter': 'Filtern',
+            'clear_filters': 'Alle Filter löschen',
+            'events_found': 'Veranstaltung(en) gefunden',
+            'upcoming_events': 'Kommende Veranstaltungen in Hamburg',
+            'no_events': 'Keine Veranstaltungen für die gewählten Kriterien.',
+            'time_morning': 'Morgen (6-12)',
+            'time_afternoon': 'Nachmittag (12-17)',
+            'time_evening': 'Abend (17-23)',
+            'category_select': '-- Kategorie wählen --',
+            'location_select': '-- Ort wählen --',
+            'open_gmaps': 'In Google Maps öffnen',
+            'weather': 'Wetter',
+            'support_us': '💖 Unterstützen',
+            'time_not_specified': 'Zeit nicht angegeben'
+        },
+        'en': {
+            'date': 'Date',
+            'time_of_day': 'Time of Day',
+            'category': 'Category',
+            'venue': 'Location/Street',
+            'filter': 'Filter',
+            'clear_filters': 'Clear All Filters',
+            'events_found': 'event(s) found',
+            'upcoming_events': 'Upcoming Events in Hamburg',
+            'no_events': 'No events available for the selected criteria.',
+            'time_morning': 'Morning (6-12)',
+            'time_afternoon': 'Afternoon (12-17)',
+            'time_evening': 'Evening (17-23)',
+            'category_select': '-- Select Category --',
+            'location_select': '-- Select Location --',
+            'open_gmaps': 'Open in Google Maps',
+            'weather': 'Weather',
+            'support_us': '💖 Support Us',
+            'time_not_specified': 'Time not specified'
+        }
+    }
+    t = translations.get(lang, translations['de'])
 
     def filter_event(event):
         if date_filter and event["start_date"][:10] != date_filter:
@@ -162,7 +207,7 @@ def index():
 
     filtered_events = [e for e in events if filter_event(e)]
     categories = sorted(set(e['category'] for e in events if e['category']))
-    
+
     # Debug: Print first few events to console
     print(f"📊 Total events: {len(events)}, Filtered: {len(filtered_events)}")
     if filtered_events:
@@ -170,7 +215,7 @@ def index():
 
     return render_template("index.html", events=filtered_events, date_filter=date_filter,
                            time_filter=time_filter, category_filter=category_filter,
-                           venue_filter=venue_filter, categories=categories)
+                           venue_filter=venue_filter, categories=categories, lang=lang, t=t)
 
 @app.route("/test-map")
 def test_map():
