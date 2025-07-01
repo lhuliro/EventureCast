@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import random
 
 load_dotenv()
 
@@ -31,7 +32,25 @@ def get_weather_forecast():
         print("❌ Error fetching weather:", e)
         return []
 
+def get_hamburg_coordinates():
+    """إرجاع إحداثيات عشوائية ضمن هامبورغ"""
+    hamburg_bounds = {
+        'lat_min': 53.4,
+        'lat_max': 53.7,
+        'lon_min': 9.7,
+        'lon_max': 10.3
+    }
+    
+    lat = round(random.uniform(hamburg_bounds['lat_min'], hamburg_bounds['lat_max']), 6)
+    lon = round(random.uniform(hamburg_bounds['lon_min'], hamburg_bounds['lon_max']), 6)
+    
+    return lat, lon
+
 def fetch_hamburg_events():
+    """
+    دالة لجلب الأحداث الحقيقية من API موقع wasgehtapp.de
+    يقوم بإرسال طلب POST مع بيانات الدخول لاسترداد الأحداث.
+    """
     try:
         conn = http.client.HTTPSConnection("www.wasgehtapp.de")
         boundary = 'wL36Yn8afVp8Ag7AmP8qZ0SA4n1v9T'
@@ -40,6 +59,7 @@ def fetch_hamburg_events():
         def encode(text):
             return text.encode('utf-8')
 
+        # بيانات تسجيل الدخول في الفورم داتا
         dataList.append(encode('--' + boundary))
         dataList.append(encode('Content-Disposition: form-data; name=mail;'))
         dataList.append(encode('Content-Type: text/plain'))
@@ -70,6 +90,10 @@ def fetch_hamburg_events():
                 bild_url = event.get("bild")
                 if not bild_url or bild_url.strip() == "":
                     bild_url = "/static/placeholder.png"
+                
+                # إضافة إحداثيات عشوائية لكل حدث (لأغراض عرض الخريطة مثلا)
+                lat, lon = get_hamburg_coordinates()
+                
                 formatted_events.append({
                     "titel": event.get("titel", ""),
                     "start_date": event.get("datum_iso", ""),
@@ -79,47 +103,102 @@ def fetch_hamburg_events():
                     "zeit": event.get("zeit", ""),
                     "kategorie": event.get("kategorie", ""),
                     "id": event.get("id", ""),
-                    "bild": bild_url
+                    "bild": bild_url,
+                    "lat": lat,  # إضافة خط العرض
+                    "lon": lon   # إضافة خط الطول
                 })
         return formatted_events
     except Exception as e:
         print("❌ Error fetching events:", e)
         return []
 
+def filter_by_time_numeric(event_time, selected_time):
+    # نفس الدالة لديك سابقا، لفلترة الوقت بناءً على النصوص الرقمية
+    if not selected_time:
+        return True
+    if not event_time:
+        return False
+    selected_time = selected_time.strip()
+    event_time = event_time.strip()
+
+    if selected_time in event_time:
+        return True
+
+    import re
+    selected_numbers = re.findall(r'\d+', selected_time)
+    event_numbers = re.findall(r'\d+', event_time)
+
+    if selected_numbers:
+        for selected_num in selected_numbers:
+            if selected_num in event_numbers:
+                return True
+            if selected_num in event_time:
+                return True
+
+    if selected_time.isdigit():
+        hour = int(selected_time)
+        patterns_24h = [
+            f"{hour:02d}:", f"{hour:02d}.", f"{hour:02d} ", f" {hour:02d}", f"{hour} ", f" {hour}",
+        ]
+        for pattern in patterns_24h:
+            if pattern in event_time:
+                return True
+
+        if hour > 12:
+            hour_12 = hour - 12
+            patterns_12h = [
+                f"{hour_12}:", f"{hour_12}.", f"{hour_12} ", f" {hour_12}",
+            ]
+            for pattern in patterns_12h:
+                if pattern in event_time:
+                    return True
+
+    if ':' in selected_time:
+        if selected_time in event_time:
+            return True
+        try:
+            hour_part = selected_time.split(':')[0]
+            if hour_part in event_time:
+                return True
+        except:
+            pass
+
+    return False
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     weather = get_weather_forecast()
     events = fetch_hamburg_events()
 
-    # قراءة مدخلات الفلترة من المستخدم
-    query = request.args.get('query', '').lower()
-    selected_category = request.args.get('category', '').lower()
-    selected_date = request.args.get('date', '')
-    selected_time = request.args.get('time', '').lower()
-    selected_location = request.args.get('location', '').lower()
+    query = request.args.get('query', '').strip()
+    selected_category = request.args.get('category', '').strip()
+    selected_date = request.args.get('date', '').strip()
+    selected_time = request.args.get('time', '').strip()
+    selected_location = request.args.get('location', '').strip()
 
-    # خريطة ربط الطقس حسب التاريخ
     weather_map = {w['readable_date']: w for w in weather}
 
-    # ربط الطقس بكل حدث حسب التاريخ
     for event in events:
         date_str = event['start_date'][:10] if event['start_date'] else None
         event['weather'] = weather_map.get(date_str)
 
-    # تطبيق الفلاتر
     filtered_events = []
     for event in events:
-        if query and query not in event['titel'].lower():
+        try:
+            if query and query.lower() not in event.get('titel', '').lower():
+                continue
+            if selected_category and selected_category.lower() not in event.get('kategorie', '').lower():
+                continue
+            if selected_date and selected_date not in event.get('start_date', ''):
+                continue
+            if selected_time and not filter_by_time_numeric(event.get('zeit', ''), selected_time):
+                continue
+            if selected_location and selected_location.lower() not in event.get('venue', '').lower():
+                continue
+            filtered_events.append(event)
+        except Exception as e:
+            print(f"❌ Error filtering event {event.get('id', 'unknown')}: {e}")
             continue
-        if selected_category and selected_category not in event['kategorie'].lower():
-            continue
-        if selected_date and selected_date not in event['start_date']:
-            continue
-        if selected_time and selected_time not in event['zeit'].lower():
-            continue
-        if selected_location and selected_location not in event['venue'].lower():
-            continue
-        filtered_events.append(event)
 
     return render_template(
         'index.html',
@@ -129,8 +208,52 @@ def index():
         category=selected_category,
         date=selected_date,
         time=selected_time,
-        location=selected_location
+        location=selected_location,
+        total_events=len(events),
+        filtered_count=len(filtered_events)
     )
+
+@app.route('/debug')
+def debug():
+    events = fetch_hamburg_events()
+    unique_times = set(event.get('zeit', '') for event in events if event.get('zeit', ''))
+    unique_categories = set(event.get('kategorie', '') for event in events if event.get('kategorie', ''))
+
+    debug_info = {
+        'total_events': len(events),
+        'unique_times': sorted(list(unique_times)),
+        'unique_categories': sorted(list(unique_categories)),
+        'sample_events': events[:5]
+    }
+
+    return f"""
+    <h1>Debug Information</h1>
+    <h2>Total Events: {debug_info['total_events']}</h2>
+    
+    <h3>Unique Time Values:</h3>
+    <ul>
+        {''.join([f'<li><strong>{time}</strong></li>' for time in debug_info['unique_times']])}
+    </ul>
+    
+    <h3>Unique Categories:</h3>
+    <ul>
+        {''.join([f'<li>{cat}</li>' for cat in debug_info['unique_categories']])}
+    </ul>
+    
+    <h3>Sample Events with Time Info:</h3>
+    <table border="1" style="border-collapse: collapse; width: 100%;">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Time (zeit)</th>
+                <th>Category</th>
+            </tr>
+        </thead>
+        <tbody>
+            {''.join([f'<tr><td>{event.get("titel", "N/A")}</td><td><strong>{event.get("zeit", "N/A")}</strong></td><td>{event.get("kategorie", "N/A")}</td></tr>' for event in debug_info['sample_events']])}
+        </tbody>
+    </table>
+    """
 
 if __name__ == '__main__':
     app.run(debug=True)

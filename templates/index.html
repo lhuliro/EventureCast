@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <title>Hamburg Events</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -52,6 +53,55 @@
         .filter-form button:hover {
             background: #5f27cd;
         }
+        .map-controls {
+            text-align: center;
+            padding: 1rem 2rem;
+            background-color: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .map-toggle-btn, .reset-filter-btn {
+            background: linear-gradient(135deg, #6a11cb, #9b59b6);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(106, 17, 203, 0.3);
+        }
+        .map-toggle-btn:hover, .reset-filter-btn:hover {
+            background: linear-gradient(135deg, #5f27cd, #8e44ad);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(106, 17, 203, 0.4);
+        }
+        .reset-filter-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            display: none;
+        }
+        .reset-filter-btn:hover {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+        }
+        .filter-status {
+            background: rgba(52, 152, 219, 0.1);
+            color: #2980b9;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 500;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #map {
+            height: 500px;
+            margin: 0 2rem 2rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: none;
+        }
         .container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -72,6 +122,14 @@
             transform: scale(1.03);
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
+        .event-card.highlighted {
+            border: 3px solid #6a11cb;
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(106, 17, 203, 0.3);
+        }
+        .event-card.hidden {
+            display: none;
+        }
         .event-bild {
             width: 100%;
             height: 180px;
@@ -90,6 +148,25 @@
             margin: 0.3rem 0;
             color: #333;
         }
+        .location-link {
+            color: #6a11cb;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.3s ease;
+            padding: 0.2rem 0;
+            border-radius: 4px;
+        }
+        .location-link:hover {
+            color: #5f27cd;
+            background-color: rgba(106, 17, 203, 0.1);
+            padding: 0.2rem 0.5rem;
+            text-decoration: underline;
+        }
+        .location-link:active {
+            transform: scale(0.98);
+        }
         .weather {
             display: flex;
             align-items: center;
@@ -107,77 +184,493 @@
             background: #343a40;
             color: white;
         }
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+        }
+        .leaflet-popup-content {
+            margin: 10px 15px;
+        }
+        .no-events {
+            text-align: center;
+            padding: 3rem;
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            margin: 2rem;
+        }
+        .popup-button {
+            background: linear-gradient(135deg, #6a11cb, #9b59b6);
+            color: white;
+            border: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        .popup-button:hover {
+            background: linear-gradient(135deg, #5f27cd, #8e44ad);
+            transform: translateY(-1px);
+        }
+        .card-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+        .action-btn {
+            flex: 1;
+            background: linear-gradient(135deg, #6a11cb, #9b59b6);
+            color: white;
+            border: none;
+            padding: 0.6rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.3rem;
+        }
+        .action-btn:hover {
+            background: linear-gradient(135deg, #5f27cd, #8e44ad);
+            transform: translateY(-1px);
+            color: white;
+        }
+        .action-btn.map-btn {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+        }
+        .action-btn.map-btn:hover {
+            background: linear-gradient(135deg, #229954, #27ae60);
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>Discover Popular Events in Hamburg</h1>
-        <p>With weather forecast integrated</p>
+        <h1>📎 EventureCast – Live Events & Weather Hub</h1>
+        <p>Discover Popular Events & Weather in Hamburg</p>
     </header>
 
     <form method="get" class="filter-form">
-        <input type="text" name="query" value="{{ query }}" placeholder="🔍 Search for event" />
-        <input type="text" name="category" value="{{ category }}" placeholder="🎯 Category" />
-        <input type="date" name="date" value="{{ date }}" />
-        <input type="text" name="time" value="{{ time }}" placeholder="🕒 Time" />
-        <input type="text" name="location" value="{{ location }}" placeholder="📍 Location" />
+        <input type="text" name="query" value="{{ query or '' }}" placeholder="🔍 Search for event" />
+        <input type="text" name="category" value="{{ category or '' }}" placeholder="🎯 Category" />
+        <input type="date" name="date" value="{{ date or '' }}" />
+        <select name="time">
+            <option value="">🕒 All Times</option>
+            <option value="00:00-06:00" {{ 'selected' if time == '00:00-06:00' else '' }}>🌙 Night (00:00-06:00)</option>
+            <option value="06:00-12:00" {{ 'selected' if time == '06:00-12:00' else '' }}>🌅 Morning (06:00-12:00)</option>
+            <option value="12:00-18:00" {{ 'selected' if time == '12:00-18:00' else '' }}>☀️ Afternoon (12:00-18:00)</option>
+            <option value="18:00-24:00" {{ 'selected' if time == '18:00-24:00' else '' }}>🌆 Evening (18:00-24:00)</option>
+            
+        </select>
+        <input type="text" name="location" value="{{ location or '' }}" placeholder="📍 Location" />
         <button type="submit">🔎 Filter</button>
     </form>
 
-    <div class="container">
-        {% for event in events %}
-        {% set normalized_category = event.kategorie.strip().lower() %}
-        {% if normalized_category == 'kino' %}
-            {% set redirect_category = 'medien' %}
-        {% else %}
-            {% set redirect_category = normalized_category %}
-        {% endif %}
-        <a class="event-card" href="https://www.wasgehtinhamburg.de/suche.php?kategorie={{ redirect_category }}" target="_blank">
-            <img class="event-bild" src="{{ event.bild }}" alt="Event Bild"
-                 onerror="this.onerror=null; this.src='{{ url_for('static', filename='placeholder.png') }}';" />
-            <div class="event-details">
-                <div class="event-title">{{ event.titel }}</div>
-                <div class="event-info">📅 {{ event.start_date[:10] }} – 🕒 {{ event.zeit }}</div>
-                <div class="event-info">📍 {{ event.venue }}</div>
+    <div class="map-controls">
+        <button class="map-toggle-btn" onclick="toggleMap()">
+            🗺️ Toggle Event Map
+        </button>
+        <button class="reset-filter-btn" id="resetFilterBtn" onclick="resetEventFilter()">
+            🔄 Show All Events
+        </button>
+        <div class="filter-status" id="filterStatus">
+            🎯 Filtered by map selection
+        </div>
+    </div>
 
-                <div class="event-info">
-                    {% set category_icons = {
-                        'konzert': '🎵', 'party': '🎉', 'literatur': '📚', 'comedy': '😂',
-                        'theater': '🎭', 'vortrag': '🎤', 'sport': '🏃', 'medien': '🖥️',
-                        'sonstige': '🧩', 'kunst': '🖼️', 'angebote': '💡', 'disco': '🪩', 'kino': '🎬'
-                    } %}
-                    🎯 Kategorie: {{ category_icons.get(normalized_category, '📌') }} {{ normalized_category|title }}
-                </div>
+    <div id="map"></div>
 
-                {% if event.weather %}
-                <div class="weather">
-                    <span class="weather-icon">
-                        {% set icon_main = event.weather.weather[0].main.lower() %}
-                        {% set icon_desc = event.weather.weather[0].description.lower() %}
-                        {% if 'rain' in icon_main %}
-                            🌧️
-                        {% elif 'snow' in icon_main %}
-                            ❄️
-                        {% elif 'cloud' in icon_main and ('few' in icon_desc or 'scattered' in icon_desc or 'partly' in icon_desc) %}
-                            ⛅
-                        {% elif 'cloud' in icon_main %}
-                            ☁️
-                        {% elif 'clear' in icon_main %}
-                            ☀️
-                        {% else %}
-                            🌡️
-                        {% endif %}
-                    </span>
-                    {{ event.weather.weather[0].description.capitalize() }}, {{ event.weather.temp.day }}°C
+    <div class="container" id="eventsContainer">
+        {% if events %}
+            {% for event in events %}
+            {% set normalized_category = event.kategorie.strip().lower() %}
+            {% if normalized_category == 'kino' %}
+                {% set redirect_category = 'medien' %}
+            {% else %}
+                {% set redirect_category = normalized_category %}
+            {% endif %}
+            <div class="event-card" data-event-id="{{ loop.index0 }}">
+                <img class="event-bild" src="{{ event.bild }}" alt="Event Bild"
+                     onerror="this.onerror=null; this.src='https://via.placeholder.com/400x200/6a11cb/white?text=Hamburg+Event';" />
+                <div class="event-details">
+                    <div class="event-title">{{ event.titel }}</div>
+                    <div class="event-info">📅 {{ event.start_date[:10] }} – 🕒 {{ event.zeit }}</div>
+                    <div class="event-info">
+                        📍 <a href="#" class="location-link" onclick="openGoogleMaps('{{ event.venue | replace("'", "\\'") }}', {{ event.lat if event.lat else 'null' }}, {{ event.lon if event.lon else 'null' }}); return false;">
+                            {{ event.venue }} 🗺️
+                        </a>
+                    </div>
+
+                    <div class="event-info">
+                        {% set category_icons = {
+                            'konzert': '🎵', 'party': '🎉', 'literatur': '📚', 'comedy': '😂',
+                            'theater': '🎭', 'vortrag': '🎤', 'sport': '🏃', 'medien': '🖥️',
+                            'sonstige': '🧩', 'kunst': '🖼️', 'angebote': '💡', 'disco': '🪩', 'kino': '🎬'
+                        } %}
+                        🎯 Kategorie: {{ category_icons.get(normalized_category, '📌') }} {{ normalized_category|title }}
+                    </div>
+
+                    {% if event.weather %}
+                    <div class="weather">
+                        <span class="weather-icon">
+                            {% set icon_main = event.weather.weather[0].main.lower() %}
+                            {% set icon_desc = event.weather.weather[0].description.lower() %}
+                            {% if 'rain' in icon_main %}
+                                🌧️
+                            {% elif 'snow' in icon_main %}
+                                ❄️
+                            {% elif 'cloud' in icon_main and ('few' in icon_desc or 'scattered' in icon_desc or 'partly' in icon_desc) %}
+                                ⛅
+                            {% elif 'cloud' in icon_main %}
+                                ☁️
+                            {% elif 'clear' in icon_main %}
+                                ☀️
+                            {% else %}
+                                🌡️
+                            {% endif %}
+                        </span>
+                        {{ event.weather.weather[0].description.capitalize() }}, {{ event.weather.temp.day }}°C
+                    </div>
+                    {% endif %}
+
+                    <div class="card-actions">
+                        <a href="https://www.wasgehtinhamburg.de/suche.php?kategorie={{ redirect_category }}" target="_blank" class="action-btn">
+                            🎫 Event Details
+                        </a>
+                        <a href="#" class="action-btn map-btn" onclick="openGoogleMaps('{{ event.venue | replace("'", "\\'") }}', {{ event.lat if event.lat else 'null' }}, {{ event.lon if event.lon else 'null' }}); return false;">
+                            🗺️ Open in Maps
+                        </a>
+                    </div>
                 </div>
-                {% endif %}
             </div>
-        </a>
-        {% endfor %}
+            {% endfor %}
+        {% else %}
+            <div class="no-events">
+                <h2>🔍 No events found</h2>
+                <p>Try adjusting your search filters or check back later for new events!</p>
+            </div>
+        {% endif %}
     </div>
 
     <footer>
         <p>&copy; 2025 Hamburg Events. All rights reserved.</p>
     </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+        // تحديد البيانات من Flask/Jinja2
+        const eventsData = [
+            {% if events %}
+                {% for event in events %}
+                {
+                    id: {{ loop.index0 }},
+                    titel: "{{ event.titel | replace('"', '\\"') | replace('\n', ' ') | replace('\r', ' ') }}",
+                    venue: "{{ event.venue | replace('"', '\\"') | replace('\n', ' ') | replace('\r', ' ') }}",
+                    zeit: "{{ event.zeit if event.zeit else 'TBA' }}",
+                    start_date: "{{ event.start_date[:10] if event.start_date else 'TBA' }}",
+                    lat: {{ event.lat if event.lat else 53.5511 }},
+                    lon: {{ event.lon if event.lon else 9.9937 }}
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            {% endif %}
+        ];
+
+        let myMap = null;
+        let mapInitialized = false;
+        let selectedEventId = null;
+        let markers = [];
+
+        // Function to parse time and determine time period
+        function getTimePeriod(timeString) {
+            if (!timeString || timeString === 'TBA') return null;
+            
+            // Extract hour from various time formats
+            let hour = null;
+            
+            // Try to match HH:MM format
+            const timeMatch = timeString.match(/(\d{1,2}):(\d{2})/);
+            if (timeMatch) {
+                hour = parseInt(timeMatch[1]);
+            } else {
+                // Try to match just hour
+                const hourMatch = timeString.match(/(\d{1,2})/);
+                if (hourMatch) {
+                    hour = parseInt(hourMatch[1]);
+                }
+            }
+            
+            if (hour !== null) {
+                if (hour >= 0 && hour < 6) return 'night';
+                if (hour >= 6 && hour < 12) return 'morning';
+                if (hour >= 12 && hour < 18) return 'afternoon';
+                if (hour >= 18 && hour <= 23) return 'evening';
+            }
+            
+            return null;
+        }
+
+        // Function to check if time matches filter
+        function matchesTimeFilter(eventTime, filterValue) {
+            if (!filterValue) return true;
+            
+            // Handle specific time ranges like "06:00-12:00"
+            if (filterValue.includes('-')) {
+                const [startTime, endTime] = filterValue.split('-');
+                const startHour = parseInt(startTime.split(':')[0]);
+                const endHour = parseInt(endTime.split(':')[0]);
+                
+                const timeMatch = eventTime.match(/(\d{1,2}):(\d{2})/);
+                if (timeMatch) {
+                    const eventHour = parseInt(timeMatch[1]);
+                    if (endHour === 0 || endHour === 24) {
+                        // Handle midnight case
+                        return eventHour >= startHour || eventHour < 6;
+                    }
+                    return eventHour >= startHour && eventHour < endHour;
+                }
+                return false;
+            }
+            
+            // Handle general time periods
+            const eventPeriod = getTimePeriod(eventTime);
+            return eventPeriod === filterValue;
+        }
+
+        // Client-side filtering function
+        function filterEvents() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const timeFilter = urlParams.get('time');
+            const queryFilter = urlParams.get('query')?.toLowerCase();
+            const categoryFilter = urlParams.get('category')?.toLowerCase();
+            const locationFilter = urlParams.get('location')?.toLowerCase();
+            const dateFilter = urlParams.get('date');
+            
+            const eventCards = document.querySelectorAll('.event-card');
+            
+            eventCards.forEach((card, index) => {
+                const event = eventsData[index];
+                let show = true;
+                
+                // Time filter
+                if (timeFilter && !matchesTimeFilter(event.zeit, timeFilter)) {
+                    show = false;
+                }
+                
+                // Query filter (search in title)
+                if (queryFilter && !event.titel.toLowerCase().includes(queryFilter)) {
+                    show = false;
+                }
+                
+                // Location filter
+                if (locationFilter && !event.venue.toLowerCase().includes(locationFilter)) {
+                    show = false;
+                }
+                
+                // Date filter
+                if (dateFilter && event.start_date !== dateFilter) {
+                    show = false;
+                }
+                
+                if (show) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
+
+        // Apply filters when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            filterEvents();
+        });
+
+        // Function to open Google Maps
+        function openGoogleMaps(venue, lat, lon) {
+            let mapsUrl;
+            
+            if (lat && lon && lat !== null && lon !== null) {
+                // If we have coordinates, use them for more accurate location
+                mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+            } else {
+                // If no coordinates, search by venue name in Hamburg
+                const searchQuery = encodeURIComponent(`${venue}, Hamburg, Germany`);
+                mapsUrl = `https://www.google.com/maps/search/${searchQuery}`;
+            }
+            
+            // Open in new tab
+            window.open(mapsUrl, '_blank');
+        }
+
+        function toggleMap() {
+            const mapDiv = document.getElementById("map");
+            const toggleBtn = document.querySelector('.map-toggle-btn');
+            
+            if (mapDiv.style.display === "none" || mapDiv.style.display === "") {
+                mapDiv.style.display = "block";
+                toggleBtn.innerHTML = "🗺️ Hide Event Map";
+                
+                // Initialize map only once
+                if (!mapInitialized) {
+                    initializeMap();
+                }
+                
+                // Refresh map display
+                setTimeout(() => {
+                    if (myMap) {
+                        myMap.invalidateSize();
+                    }
+                }, 100);
+                
+            } else {
+                mapDiv.style.display = "none";
+                toggleBtn.innerHTML = "🗺️ Show Event Map";
+            }
+        }
+
+        function initializeMap() {
+            myMap = L.map("map").setView([53.55, 9.99], 12);
+            
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+            }).addTo(myMap);
+
+            // Add markers for events
+            eventsData.forEach((event, index) => {
+                if (event.lat && event.lon) {
+                    // Custom marker icon
+                    const customIcon = L.divIcon({
+                        className: 'custom-marker',
+                        html: `<div style="background: linear-gradient(135deg, #6a11cb, #9b59b6); color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: 0 2px 8px rgba(106,17,203,0.4); cursor: pointer;">📍</div>`,
+                        iconSize: [25, 25],
+                        iconAnchor: [12, 25]
+                    });
+
+                    const marker = L.marker([event.lat, event.lon], {icon: customIcon})
+                        .addTo(myMap)
+                        .bindPopup(`
+                            <div style="max-width: 250px;">
+                                <strong style="color: #6a11cb; font-size: 14px;">${event.titel}</strong><br>
+                                <small style="color: #666;">📍 ${event.venue}</small><br>
+                                <small style="color: #666;">📅 ${event.start_date}</small><br>
+                                <small style="color: #666;">🕒 ${event.zeit}</small><br>
+                                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                                    <button class="popup-button" onclick="filterByEvent(${event.id})">
+                                        🎯 Show Event
+                                    </button>
+                                    <button class="popup-button" onclick="openGoogleMaps('${event.venue.replace(/'/g, "\\'")}', ${event.lat}, ${event.lon})">
+                                        🗺️ Google Maps
+                                    </button>
+                                </div>
+                            </div>
+                        `);
+
+                    // Add click event to marker
+                    marker.on('click', function() {
+                        setTimeout(() => {
+                            // The popup is now open, scroll to the event card
+                            scrollToEventCard(event.id);
+                        }, 100);
+                    });
+
+                    markers.push({marker: marker, eventId: event.id});
+                }
+            });
+            
+            mapInitialized = true;
+            console.log(`Map initialized with ${eventsData.length} events`);
+        }
+
+        function filterByEvent(eventId) {
+            selectedEventId = eventId;
+            const eventCards = document.querySelectorAll('.event-card');
+            const resetBtn = document.getElementById('resetFilterBtn');
+            const filterStatus = document.getElementById('filterStatus');
+            
+            // Hide all events except the selected one
+            eventCards.forEach((card, index) => {
+                if (index === eventId) {
+                    card.classList.remove('hidden');
+                    card.classList.add('highlighted');
+                    // Scroll to the selected event
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    card.classList.add('hidden');
+                    card.classList.remove('highlighted');
+                }
+            });
+            
+            // Show reset button and filter status
+            resetBtn.style.display = 'block';
+            filterStatus.style.display = 'flex';
+            
+            // Update marker styles
+            updateMarkerStyles();
+            
+            // Close any open popups
+            if (myMap) {
+                myMap.closePopup();
+            }
+        }
+
+        function resetEventFilter() {
+            selectedEventId = null;
+            const eventCards = document.querySelectorAll('.event-card');
+            const resetBtn = document.getElementById('resetFilterBtn');
+            const filterStatus = document.getElementById('filterStatus');
+            
+            // Show all events
+            eventCards.forEach(card => {
+                card.classList.remove('hidden', 'highlighted');
+            });
+            
+            // Hide reset button and filter status
+            resetBtn.style.display = 'none';
+            filterStatus.style.display = 'none';
+            
+            // Reset marker styles
+            updateMarkerStyles();
+            
+            // Re-apply URL-based filters
+            filterEvents();
+        }
+
+        function scrollToEventCard(eventId) {
+            const targetCard = document.querySelector(`[data-event-id="${eventId}"]`);
+            if (targetCard) {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Add temporary highlight effect
+                targetCard.style.border = '3px solid #e74c3c';
+                setTimeout(() => {
+                    if (selectedEventId !== eventId) {
+                        targetCard.style.border = '';
+                    }
+                }, 2000);
+            }
+        }
+
+        function updateMarkerStyles() {
+            markers.forEach(({marker, eventId}) => {
+                const isSelected = selectedEventId === eventId;
+                const iconHtml = isSelected 
+                    ? `<div style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 4px 12px rgba(231,76,60,0.5); cursor: pointer; border: 2px solid white;">📍</div>`
+                    : `<div style="background: linear-gradient(135deg, #6a11cb, #9b59b6); color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: 0 2px 8px rgba(106,17,203,0.4); cursor: pointer;">📍</div>`;
+                
+                const newIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: iconHtml,
+                    iconSize: isSelected ? [30, 30] : [25, 25],
+                    iconAnchor: isSelected ? [15, 30] : [12, 25]
+                });
+                
+                marker.setIcon(newIcon);
+            });
+        }
+    </script>
 </body>
 </html>
