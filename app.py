@@ -33,7 +33,7 @@ def get_weather_forecast():
         return []
 
 def get_hamburg_coordinates():
-    """إرجاع إحداثيات عشوائية ضمن هامبورغ"""
+    """Return random coordinates within Hamburg"""
     hamburg_bounds = {
         'lat_min': 53.4,
         'lat_max': 53.7,
@@ -48,8 +48,8 @@ def get_hamburg_coordinates():
 
 def fetch_hamburg_events():
     """
-    دالة لجلب الأحداث الحقيقية من API موقع wasgehtapp.de
-    يقوم بإرسال طلب POST مع بيانات الدخول لاسترداد الأحداث.
+    Function to fetch real events from the wasgehtapp.de API
+    Sends a POST request with login data to retrieve events.
     """
     try:
         conn = http.client.HTTPSConnection("www.wasgehtapp.de")
@@ -59,7 +59,7 @@ def fetch_hamburg_events():
         def encode(text):
             return text.encode('utf-8')
 
-        # بيانات تسجيل الدخول في الفورم داتا
+        # Login data in form data
         dataList.append(encode('--' + boundary))
         dataList.append(encode('Content-Disposition: form-data; name=mail;'))
         dataList.append(encode('Content-Type: text/plain'))
@@ -91,7 +91,7 @@ def fetch_hamburg_events():
                 if not bild_url or bild_url.strip() == "":
                     bild_url = "/static/placeholder.png"
                 
-                # إضافة إحداثيات عشوائية لكل حدث (لأغراض عرض الخريطة مثلا)
+                # Add random coordinates for each event (for map display purposes, for example)
                 lat, lon = get_hamburg_coordinates()
                 
                 formatted_events.append({
@@ -104,8 +104,8 @@ def fetch_hamburg_events():
                     "kategorie": event.get("kategorie", ""),
                     "id": event.get("id", ""),
                     "bild": bild_url,
-                    "lat": lat,  # إضافة خط العرض
-                    "lon": lon   # إضافة خط الطول
+                    "lat": lat,  # Add latitude
+                    "lon": lon   # Add longitude
                 })
         return formatted_events
     except Exception as e:
@@ -113,7 +113,7 @@ def fetch_hamburg_events():
         return []
 
 def filter_by_time_numeric(event_time, selected_time):
-    # نفس الدالة لديك سابقا، لفلترة الوقت بناءً على النصوص الرقمية
+    # Same function as before, for filtering time based on numeric text
     if not selected_time:
         return True
     if not event_time:
