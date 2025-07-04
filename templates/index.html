@@ -254,10 +254,25 @@
         <h1>📎 EventureCast – Live Events & Weather Hub</h1>
         <p>Discover Popular Events & Weather in Hamburg</p>
     </header>
-
+ 
     <form method="get" class="filter-form">
         <input type="text" name="query" value="{{ query or '' }}" placeholder="🔍 Search for event" />
-        <input type="text" name="category" value="{{ category or '' }}" placeholder="🎯 Category" />
+        <select name="category">
+            <option value="">🎯 All Categories</option>
+            <option value="konzert" {{ 'selected' if category == 'konzert' else '' }}>🎵 Konzert</option>
+            <option value="party" {{ 'selected' if category == 'party' else '' }}>🎉 Party</option>
+            <option value="literatur" {{ 'selected' if category == 'literatur' else '' }}>📚 Literatur</option>
+            <option value="comedy" {{ 'selected' if category == 'comedy' else '' }}>😂 Comedy</option>
+            <option value="theater" {{ 'selected' if category == 'theater' else '' }}>🎭 Theater</option>
+            <option value="vortrag" {{ 'selected' if category == 'vortrag' else '' }}>🎤 Vortrag</option>
+            <option value="sport" {{ 'selected' if category == 'sport' else '' }}>🏃 Sport</option>
+            <option value="medien" {{ 'selected' if category == 'medien' else '' }}>🖥️ Medien</option>
+            <option value="kino" {{ 'selected' if category == 'kino' else '' }}>🎬 Kino</option>
+            <option value="sonstige" {{ 'selected' if category == 'sonstige' else '' }}>🧩 Sonstige</option>
+            <option value="kunst" {{ 'selected' if category == 'kunst' else '' }}>🖼️ Kunst</option>
+            <option value="angebote" {{ 'selected' if category == 'angebote' else '' }}>💡 Angebote</option>
+            <option value="disco" {{ 'selected' if category == 'disco' else '' }}>🪩 Disco</option>
+        </select>
         <input type="date" name="date" value="{{ date or '' }}" />
         <select name="time">
             <option value="">🕒 All Times</option>
@@ -265,12 +280,11 @@
             <option value="06:00-12:00" {{ 'selected' if time == '06:00-12:00' else '' }}>🌅 Morning (06:00-12:00)</option>
             <option value="12:00-18:00" {{ 'selected' if time == '12:00-18:00' else '' }}>☀️ Afternoon (12:00-18:00)</option>
             <option value="18:00-24:00" {{ 'selected' if time == '18:00-24:00' else '' }}>🌆 Evening (18:00-24:00)</option>
-            
         </select>
         <input type="text" name="location" value="{{ location or '' }}" placeholder="📍 Location" />
         <button type="submit">🔎 Filter</button>
     </form>
-
+ 
     <div class="map-controls">
         <button class="map-toggle-btn" onclick="toggleMap()">
             🗺️ Toggle Event Map
@@ -282,9 +296,9 @@
             🎯 Filtered by map selection
         </div>
     </div>
-
+ 
     <div id="map"></div>
-
+ 
     <div class="container" id="eventsContainer">
         {% if events %}
             {% for event in events %}
@@ -294,7 +308,7 @@
             {% else %}
                 {% set redirect_category = normalized_category %}
             {% endif %}
-            <div class="event-card" data-event-id="{{ loop.index0 }}">
+            <div class="event-card" data-event-id="{{ loop.index0 }}" data-category="{{ normalized_category }}">
                 <img class="event-bild" src="{{ event.bild }}" alt="Event Bild"
                      onerror="this.onerror=null; this.src='https://via.placeholder.com/400x200/6a11cb/white?text=Hamburg+Event';" />
                 <div class="event-details">
@@ -305,7 +319,7 @@
                             {{ event.venue }} 🗺️
                         </a>
                     </div>
-
+ 
                     <div class="event-info">
                         {% set category_icons = {
                             'konzert': '🎵', 'party': '🎉', 'literatur': '📚', 'comedy': '😂',
@@ -314,7 +328,7 @@
                         } %}
                         🎯 Kategorie: {{ category_icons.get(normalized_category, '📌') }} {{ normalized_category|title }}
                     </div>
-
+ 
                     {% if event.weather %}
                     <div class="weather">
                         <span class="weather-icon">
@@ -337,7 +351,7 @@
                         {{ event.weather.weather[0].description.capitalize() }}, {{ event.weather.temp.day }}°C
                     </div>
                     {% endif %}
-
+ 
                     <div class="card-actions">
                         <a href="https://www.wasgehtinhamburg.de/suche.php?kategorie={{ redirect_category }}" target="_blank" class="action-btn">
                             🎫 Event Details
@@ -356,11 +370,11 @@
             </div>
         {% endif %}
     </div>
-
+ 
     <footer>
         <p>&copy; 2025 Hamburg Events. All rights reserved.</p>
     </footer>
-
+ 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script>
         // تحديد البيانات من Flask/Jinja2
@@ -373,25 +387,26 @@
                     venue: "{{ event.venue | replace('"', '\\"') | replace('\n', ' ') | replace('\r', ' ') }}",
                     zeit: "{{ event.zeit if event.zeit else 'TBA' }}",
                     start_date: "{{ event.start_date[:10] if event.start_date else 'TBA' }}",
+                    category: "{{ event.kategorie.strip().lower() if event.kategorie else '' }}",
                     lat: {{ event.lat if event.lat else 53.5511 }},
                     lon: {{ event.lon if event.lon else 9.9937 }}
                 }{% if not loop.last %},{% endif %}
                 {% endfor %}
             {% endif %}
         ];
-
+ 
         let myMap = null;
         let mapInitialized = false;
         let selectedEventId = null;
         let markers = [];
-
+ 
         // Function to parse time and determine time period
         function getTimePeriod(timeString) {
             if (!timeString || timeString === 'TBA') return null;
-            
+           
             // Extract hour from various time formats
             let hour = null;
-            
+           
             // Try to match HH:MM format
             const timeMatch = timeString.match(/(\d{1,2}):(\d{2})/);
             if (timeMatch) {
@@ -403,27 +418,27 @@
                     hour = parseInt(hourMatch[1]);
                 }
             }
-            
+           
             if (hour !== null) {
                 if (hour >= 0 && hour < 6) return 'night';
                 if (hour >= 6 && hour < 12) return 'morning';
                 if (hour >= 12 && hour < 18) return 'afternoon';
                 if (hour >= 18 && hour <= 23) return 'evening';
             }
-            
+           
             return null;
         }
-
+ 
         // Function to check if time matches filter
         function matchesTimeFilter(eventTime, filterValue) {
             if (!filterValue) return true;
-            
+           
             // Handle specific time ranges like "06:00-12:00"
             if (filterValue.includes('-')) {
                 const [startTime, endTime] = filterValue.split('-');
                 const startHour = parseInt(startTime.split(':')[0]);
                 const endHour = parseInt(endTime.split(':')[0]);
-                
+               
                 const timeMatch = eventTime.match(/(\d{1,2}):(\d{2})/);
                 if (timeMatch) {
                     const eventHour = parseInt(timeMatch[1]);
@@ -435,12 +450,12 @@
                 }
                 return false;
             }
-            
+           
             // Handle general time periods
             const eventPeriod = getTimePeriod(eventTime);
             return eventPeriod === filterValue;
         }
-
+ 
         // Client-side filtering function
         function filterEvents() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -449,33 +464,40 @@
             const categoryFilter = urlParams.get('category')?.toLowerCase();
             const locationFilter = urlParams.get('location')?.toLowerCase();
             const dateFilter = urlParams.get('date');
-            
+           
             const eventCards = document.querySelectorAll('.event-card');
-            
+           
             eventCards.forEach((card, index) => {
                 const event = eventsData[index];
+                if (!event) return;
+               
                 let show = true;
-                
+               
                 // Time filter
                 if (timeFilter && !matchesTimeFilter(event.zeit, timeFilter)) {
                     show = false;
                 }
-                
+               
                 // Query filter (search in title)
                 if (queryFilter && !event.titel.toLowerCase().includes(queryFilter)) {
                     show = false;
                 }
-                
+               
+                // Category filter
+                if (categoryFilter && event.category !== categoryFilter) {
+                    show = false;
+                }
+               
                 // Location filter
                 if (locationFilter && !event.venue.toLowerCase().includes(locationFilter)) {
                     show = false;
                 }
-                
+               
                 // Date filter
                 if (dateFilter && event.start_date !== dateFilter) {
                     show = false;
                 }
-                
+               
                 if (show) {
                     card.classList.remove('hidden');
                 } else {
@@ -483,16 +505,16 @@
                 }
             });
         }
-
+ 
         // Apply filters when page loads
         document.addEventListener('DOMContentLoaded', function() {
             filterEvents();
         });
-
+ 
         // Function to open Google Maps
         function openGoogleMaps(venue, lat, lon) {
             let mapsUrl;
-            
+           
             if (lat && lon && lat !== null && lon !== null) {
                 // If we have coordinates, use them for more accurate location
                 mapsUrl = `https://www.google.com/maps?q=${lat},${lon}`;
@@ -501,44 +523,44 @@
                 const searchQuery = encodeURIComponent(`${venue}, Hamburg, Germany`);
                 mapsUrl = `https://www.google.com/maps/search/${searchQuery}`;
             }
-            
+           
             // Open in new tab
             window.open(mapsUrl, '_blank');
         }
-
+ 
         function toggleMap() {
             const mapDiv = document.getElementById("map");
             const toggleBtn = document.querySelector('.map-toggle-btn');
-            
+           
             if (mapDiv.style.display === "none" || mapDiv.style.display === "") {
                 mapDiv.style.display = "block";
                 toggleBtn.innerHTML = "🗺️ Hide Event Map";
-                
+               
                 // Initialize map only once
                 if (!mapInitialized) {
                     initializeMap();
                 }
-                
+               
                 // Refresh map display
                 setTimeout(() => {
                     if (myMap) {
                         myMap.invalidateSize();
                     }
                 }, 100);
-                
+               
             } else {
                 mapDiv.style.display = "none";
                 toggleBtn.innerHTML = "🗺️ Show Event Map";
             }
         }
-
+ 
         function initializeMap() {
             myMap = L.map("map").setView([53.55, 9.99], 12);
-            
+           
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
             }).addTo(myMap);
-
+ 
             // Add markers for events
             eventsData.forEach((event, index) => {
                 if (event.lat && event.lon) {
@@ -549,7 +571,7 @@
                         iconSize: [25, 25],
                         iconAnchor: [12, 25]
                     });
-
+ 
                     const marker = L.marker([event.lat, event.lon], {icon: customIcon})
                         .addTo(myMap)
                         .bindPopup(`
@@ -568,7 +590,7 @@
                                 </div>
                             </div>
                         `);
-
+ 
                     // Add click event to marker
                     marker.on('click', function() {
                         setTimeout(() => {
@@ -576,21 +598,21 @@
                             scrollToEventCard(event.id);
                         }, 100);
                     });
-
+ 
                     markers.push({marker: marker, eventId: event.id});
                 }
             });
-            
+           
             mapInitialized = true;
             console.log(`Map initialized with ${eventsData.length} events`);
         }
-
+ 
         function filterByEvent(eventId) {
             selectedEventId = eventId;
             const eventCards = document.querySelectorAll('.event-card');
             const resetBtn = document.getElementById('resetFilterBtn');
             const filterStatus = document.getElementById('filterStatus');
-            
+           
             // Hide all events except the selected one
             eventCards.forEach((card, index) => {
                 if (index === eventId) {
@@ -603,47 +625,47 @@
                     card.classList.remove('highlighted');
                 }
             });
-            
+           
             // Show reset button and filter status
             resetBtn.style.display = 'block';
             filterStatus.style.display = 'flex';
-            
+           
             // Update marker styles
             updateMarkerStyles();
-            
+           
             // Close any open popups
             if (myMap) {
                 myMap.closePopup();
             }
         }
-
+ 
         function resetEventFilter() {
             selectedEventId = null;
             const eventCards = document.querySelectorAll('.event-card');
             const resetBtn = document.getElementById('resetFilterBtn');
             const filterStatus = document.getElementById('filterStatus');
-            
+           
             // Show all events
             eventCards.forEach(card => {
                 card.classList.remove('hidden', 'highlighted');
             });
-            
+           
             // Hide reset button and filter status
             resetBtn.style.display = 'none';
             filterStatus.style.display = 'none';
-            
+           
             // Reset marker styles
             updateMarkerStyles();
-            
+           
             // Re-apply URL-based filters
             filterEvents();
         }
-
+ 
         function scrollToEventCard(eventId) {
             const targetCard = document.querySelector(`[data-event-id="${eventId}"]`);
             if (targetCard) {
                 targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                
+               
                 // Add temporary highlight effect
                 targetCard.style.border = '3px solid #e74c3c';
                 setTimeout(() => {
@@ -653,21 +675,21 @@
                 }, 2000);
             }
         }
-
+ 
         function updateMarkerStyles() {
             markers.forEach(({marker, eventId}) => {
                 const isSelected = selectedEventId === eventId;
-                const iconHtml = isSelected 
+                const iconHtml = isSelected
                     ? `<div style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 4px 12px rgba(231,76,60,0.5); cursor: pointer; border: 2px solid white;">📍</div>`
                     : `<div style="background: linear-gradient(135deg, #6a11cb, #9b59b6); color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; font-size: 14px; box-shadow: 0 2px 8px rgba(106,17,203,0.4); cursor: pointer;">📍</div>`;
-                
+               
                 const newIcon = L.divIcon({
                     className: 'custom-marker',
                     html: iconHtml,
                     iconSize: isSelected ? [30, 30] : [25, 25],
                     iconAnchor: isSelected ? [15, 30] : [12, 25]
                 });
-                
+               
                 marker.setIcon(newIcon);
             });
         }
